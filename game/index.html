@@ -1,172 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Tic Tac Toe 2 Player Online</title>
-<link rel="stylesheet" href="style.css" />
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-</head>
-<body>
-  <h1>Tic Tac Toe - 2 Player Online</h1>
-  <div id="game">
-    <div class="board">
-      <div class="cell" data-cell="0"></div>
-      <div class="cell" data-cell="1"></div>
-      <div class="cell" data-cell="2"></div>
-      <div class="cell" data-cell="3"></div>
-      <div class="cell" data-cell="4"></div>
-      <div class="cell" data-cell="5"></div>
-      <div class="cell" data-cell="6"></div>
-      <div class="cell" data-cell="7"></div>
-      <div class="cell" data-cell="8"></div>
-    </div>
-    <p id="status">Loading game...</p>
-    <button id="resetBtn">Reset Game</button>
-  </div>
-
-<script>
-  // TODO: Thay firebaseConfig bằng config của bạn
-  const firebaseConfig = {
-  apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
-  authDomain: "test-game-8a541.firebaseapp.com",
-  databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "test-game-8a541",
-  storageBucket: "test-game-8a541.firebasestorage.app",
-  messagingSenderId: "396403313237",
-  appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
-};
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  // Đường dẫn data game trên realtime db
-  const gameRef = db.ref('tic-tac-toe/game');
-
-  const cells = document.querySelectorAll('.cell');
-  const statusText = document.getElementById('status');
-  const resetBtn = document.getElementById('resetBtn');
-
-  let playerSymbol = null; // X hoặc O, được gán lúc join game
-  let currentTurn = null;
-  let board = Array(9).fill(null);
-
-  // Đăng ký sự kiện click từng ô
-  cells.forEach(cell => {
-    cell.addEventListener('click', () => {
-      if (!playerSymbol) return alert("Waiting for symbol assignment");
-      const cellIndex = cell.getAttribute('data-cell');
-      if (board[cellIndex] || currentTurn !== playerSymbol) return;
-      makeMove(cellIndex);
-    });
-  });
-
-  resetBtn.addEventListener('click', () => {
-    if (confirm("Reset game?")) {
-      gameRef.set({
-        board: Array(9).fill(null),
-        turn: 'X',
-        winner: null,
-        players: {}
-      });
-    }
-  });
-
-  // Tạo hoặc tham gia game
-  gameRef.once('value', snapshot => {
-    const data = snapshot.val();
-    if (!data) {
-      // Tạo game mới
-      gameRef.set({
-        board: Array(9).fill(null),
-        turn: 'X',
-        winner: null,
-        players: {}
-      });
-    }
-  });
-
-  // Giữ thông tin người chơi
-  gameRef.child('players').once('value', snapshot => {
-    let players = snapshot.val() || {};
-    if (!players.X) {
-      playerSymbol = 'X';
-      players.X = true;
-    } else if (!players.O) {
-      playerSymbol = 'O';
-      players.O = true;
-    } else {
-      alert("Game full. Only 2 players allowed.");
-      playerSymbol = null;
-    }
-    gameRef.child('players').set(players);
-    statusText.textContent = `You are player ${playerSymbol}`;
-  });
-
-  // Lắng nghe thay đổi game realtime
-  gameRef.on('value', snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
-    board = data.board || Array(9).fill(null);
-    currentTurn = data.turn;
-    updateBoard();
-    checkWinner();
-    if(data.winner) {
-      if(data.winner === 'Draw') {
-        statusText.textContent = "Game ended in a draw!";
-      } else {
-        statusText.textContent = `Player ${data.winner} wins!`;
-      }
-    } else {
-      statusText.textContent = (playerSymbol === currentTurn) ? "Your turn" : "Opponent's turn";
-    }
-  });
-
-  function makeMove(index) {
-    if (board[index] || currentTurn !== playerSymbol) return;
-    board[index] = playerSymbol;
-    let winner = calculateWinner(board);
-    let turn = (playerSymbol === 'X') ? 'O' : 'X';
-    if(winner) {
-      gameRef.set({
-        board,
-        turn: null,
-        winner
-      });
-    } else if(board.every(cell => cell !== null)) {
-      gameRef.set({
-        board,
-        turn: null,
-        winner: 'Draw'
-      });
-    } else {
-      gameRef.set({
-        board,
-        turn,
-        winner: null
-      });
-    }
-  }
-
-  function updateBoard() {
-    cells.forEach((cell, idx) => {
-      cell.textContent = board[idx] ? board[idx] : '';
-    });
-  }
-
-  function calculateWinner(b) {
-    const lines = [
-      [0,1,2],[3,4,5],[6,7,8], // hàng ngang
-      [0,3,6],[1,4,7],[2,5,8], // hàng dọc
-      [0,4,8],[2,4,6]          // chéo
-    ];
-    for(let [a,bIdx,c] of lines) {
-      if(b[a] && b[a] === b[bIdx] && b[a] === b[c]) return b[a];
-    }
-    return null;
-  }
-</script>
-
-</body>
-</html>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin: 20px;
+  background: #f0f0f0;
+}
+h1 {
+  color: #333;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 80px);
+  grid-gap: 10px;
+  justify-content: center;
+  margin: 20px auto;
+}
+.cell {
+  background: white;
+  border: 2px solid #555;
+  font-size: 2.5rem;
+  line-height: 80px;
+  cursor: pointer;
+  user-select: none;
+  width: 80px;
+  height: 80px;
+}
+.cell:hover {
+  background: #ddd;
+}
+#status {
+  font-size: 1.2rem;
+  margin: 10px;
+}
+#resetBtn {
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+}
