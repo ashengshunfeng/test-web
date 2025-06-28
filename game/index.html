@@ -1,261 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tic Tac Toe 5 in a Row (10x10)</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      height: 100vh;
-      justify-content: center;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chữ chạy và đổi màu nhấp nháy</title>
+<style>
+  body {
+    background: #222;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    margin: 0; padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    justify-content: center;
+  }
+  #marquee-container {
+    width: 80vw;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 2px solid #fff;
+    padding: 10px 0;
+    margin-bottom: 30px;
+    position: relative;
+  }
+  #marquee-text {
+    display: inline-block;
+    font-size: 2.5rem;
+    font-weight: bold;
+    padding-left: 100%;
+    animation: marquee 12s linear infinite;
+    user-select: none;
+  }
+  /* Chạy chữ từ phải sang trái */
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
     }
-    #game {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 0 12px rgba(0,0,0,0.15);
-      max-width: 650px;
-      width: 100%;
-      overflow-x: auto;
-      text-align: center;
+    100% {
+      transform: translateX(-100%);
     }
-    table {
-      border-collapse: collapse;
-      margin: 10px auto;
-      user-select: none;
-    }
-    td {
-      width: 40px;
-      height: 40px;
-      border: 1px solid #444;
-      font-size: 26px;
-      line-height: 40px;
-      cursor: pointer;
-      vertical-align: middle;
-      text-align: center;
-      padding: 0;
-      transition: background-color 0.3s;
-    }
-    td:hover {
-      background-color: #d0eaff;
-    }
-    #status {
-      font-weight: bold;
-      font-size: 20px;
-      margin-bottom: 10px;
-      min-height: 24px;
-    }
-    button {
-      padding: 8px 16px;
-      font-size: 16px;
-      cursor: pointer;
-      border: none;
-      background-color: #0078d7;
-      color: white;
-      border-radius: 5px;
-      margin-top: 10px;
-    }
-    button:hover {
-      background-color: #005ea1;
-    }
-  </style>
+  }
+  /* Đổi màu nhấp nháy */
+  #marquee-text {
+    animation-name: marquee, colorChange, blink;
+    animation-duration: 12s, 6s, 1.2s;
+    animation-timing-function: linear, ease-in-out, steps(2, start);
+    animation-iteration-count: infinite;
+  }
+  @keyframes colorChange {
+    0% { color: #ff3c3c; }
+    25% { color: #ffa53c; }
+    50% { color: #3cff72; }
+    75% { color: #3ca7ff; }
+    100% { color: #ff3c3c; }
+  }
+  @keyframes blink {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.4; }
+  }
+
+  /* Chibi SVG container */
+  #chibis {
+    display: flex;
+    gap: 30px;
+  }
+  svg.chibi {
+    width: 120px;
+    height: 160px;
+    user-select: none;
+  }
+</style>
 </head>
 <body>
-  <div id="game">
-    <div id="status">Đang tải...</div>
-    <table id="board"></table>
-    <button id="resetBtn">Reset Game</button>
-  </div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<div id="marquee-container">
+  <span id="marquee-text">Anh Liang Ăn Cứt. Anh Vỹ bỏ vợ đi</span>
+</div>
 
-  <script>
-    // Firebase config của bạn
-    const firebaseConfig = {
-      apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
-      authDomain: "test-game-8a541.firebaseapp.com",
-      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "test-game-8a541",
-      storageBucket: "test-game-8a541.firebasestorage.app",
-      messagingSenderId: "396403313237",
-      appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
-    };
+<div id="chibis">
+  <!-- Chibi 1: cậu trai tóc ngắn -->
+  <svg class="chibi" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="24" r="20" fill="#ffdbac" stroke="#000" stroke-width="1.5"/>
+    <path d="M22 30 q10 10 20 0" fill="#6b4c3b"/>
+    <circle cx="24" cy="22" r="4" fill="#000"/>
+    <circle cx="40" cy="22" r="4" fill="#000"/>
+    <rect x="14" y="44" width="36" height="36" rx="8" ry="8" fill="#3465a4" />
+    <path d="M24 44 l0 20" stroke="#000" stroke-width="2"/>
+    <path d="M40 44 l0 20" stroke="#000" stroke-width="2"/>
+  </svg>
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const gameRef = db.ref("tic-tac-toe-5");
+  <!-- Chibi 2: cậu trai tóc dài -->
+  <svg class="chibi" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="24" r="20" fill="#ffe0bd" stroke="#000" stroke-width="1.5"/>
+    <path d="M12 16 q40 20 40 0" fill="#3a1f0b"/>
+    <circle cx="24" cy="22" r="4" fill="#000"/>
+    <circle cx="40" cy="22" r="4" fill="#000"/>
+    <rect x="14" y="44" width="36" height="36" rx="12" ry="12" fill="#da4a4a" />
+    <path d="M18 60 l28 0" stroke="#000" stroke-width="2"/>
+  </svg>
 
-    const SIZE = 10; // kích thước bàn cờ 10x10
-    const WIN_COUNT = 5; // số ô liên tiếp thắng
-    let board = Array(SIZE * SIZE).fill(null);
-    let player = null; // 'X' hoặc 'O'
-    let currentTurn = 'X';
-    let gameOver = false;
+  <!-- Chibi 3: cậu trai cười -->
+  <svg class="chibi" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="24" r="20" fill="#f0c090" stroke="#000" stroke-width="1.5"/>
+    <path d="M22 30 q10 15 20 0" fill="none" stroke="#000" stroke-width="2" />
+    <circle cx="24" cy="22" r="4" fill="#000"/>
+    <circle cx="40" cy="22" r="4" fill="#000"/>
+    <rect x="14" y="44" width="36" height="36" rx="10" ry="10" fill="#56a255" />
+  </svg>
+</div>
 
-    const statusDiv = document.getElementById('status');
-    const boardTable = document.getElementById('board');
-    const resetBtn = document.getElementById('resetBtn');
-
-    // Tạo bàn cờ động
-    function createBoard(){
-      boardTable.innerHTML = '';
-      for(let r=0; r<SIZE; r++){
-        const tr = document.createElement('tr');
-        for(let c=0; c<SIZE; c++){
-          const td = document.createElement('td');
-          td.dataset.cell = r * SIZE + c;
-          td.addEventListener('click', onCellClick);
-          tr.appendChild(td);
-        }
-        boardTable.appendChild(tr);
-      }
-    }
-
-    // Kiểm tra thắng 5 ô liên tiếp
-    function checkWin(b, p) {
-      const directions = [
-        [0, 1],   // ngang
-        [1, 0],   // dọc
-        [1, 1],   // chéo chính
-        [1, -1]   // chéo phụ
-      ];
-
-      for(let i=0; i < b.length; i++) {
-        if(b[i] !== p) continue;
-
-        let row = Math.floor(i / SIZE);
-        let col = i % SIZE;
-
-        for(let [dr, dc] of directions){
-          let count = 1;
-
-          for(let step=1; step<WIN_COUNT; step++){
-            let nr = row + dr*step;
-            let nc = col + dc*step;
-            if(nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
-            if(b[nr * SIZE + nc] === p){
-              count++;
-            } else {
-              break;
-            }
-          }
-
-          if(count >= WIN_COUNT) return true;
-        }
-      }
-      return false;
-    }
-
-    // Kiểm tra hòa
-    function checkDraw(b){
-      return b.every(cell => cell !== null);
-    }
-
-    // Cập nhật giao diện
-    function render(){
-      const cells = boardTable.querySelectorAll('td');
-      board.forEach((val, idx) => {
-        cells[idx].textContent = val || '';
-        cells[idx].style.backgroundColor = '';
-      });
-
-      if(gameOver){
-        if(checkWin(board, player)) {
-          statusDiv.textContent = `Người chơi ${player} thắng!`;
-        } else {
-          statusDiv.textContent = `Hòa rồi!`;
-        }
-      } else {
-        if(player === null){
-          statusDiv.textContent = 'Đang xác định người chơi...';
-        } else if(player !== currentTurn){
-          statusDiv.textContent = `Chờ người chơi ${currentTurn} đánh...`;
-        } else {
-          statusDiv.textContent = `Lượt của bạn (${player})`;
-        }
-      }
-    }
-
-    // Xử lý click ô
-    function onCellClick(e){
-      if(gameOver) return;
-
-      if(player !== currentTurn){
-        alert('Chưa đến lượt bạn!');
-        return;
-      }
-
-      const idx = Number(e.target.dataset.cell);
-      if(board[idx] !== null){
-        alert('Ô này đã được chọn!');
-        return;
-      }
-
-      board[idx] = player;
-      gameOver = checkWin(board, player) || checkDraw(board);
-      currentTurn = player === 'X' ? 'O' : 'X';
-      updateGame();
-    }
-
-    // Cập nhật dữ liệu lên Firebase
-    function updateGame(){
-      gameRef.set({
-        board: board,
-        currentTurn: currentTurn,
-        gameOver: gameOver,
-        playerXJoined: true
-      });
-    }
-
-    // Lắng nghe dữ liệu thay đổi trên Firebase
-    gameRef.on('value', snapshot => {
-      const data = snapshot.val();
-      if(!data) {
-        gameRef.set({
-          board: Array(SIZE * SIZE).fill(null),
-          currentTurn: 'X',
-          gameOver: false,
-          playerXJoined: false
-        });
-        return;
-      }
-
-      board = data.board || Array(SIZE * SIZE).fill(null);
-      currentTurn = data.currentTurn || 'X';
-      gameOver = data.gameOver || false;
-
-      // Xác định người chơi
-      if(player === null){
-        if(!data.playerXJoined){
-          player = 'X';
-          gameRef.update({playerXJoined: true});
-        } else {
-          player = 'O';
-        }
-      }
-
-      render();
-    });
-
-    resetBtn.addEventListener('click', () => {
-      if(player === null) return;
-      gameRef.set({
-        board: Array(SIZE * SIZE).fill(null),
-        currentTurn: 'X',
-        gameOver: false,
-        playerXJoined: false
-      });
-    });
-
-    createBoard();
-  </script>
 </body>
 </html>
