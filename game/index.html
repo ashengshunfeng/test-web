@@ -1,38 +1,238 @@
-body {
-  font-family: Arial, sans-serif;
-  text-align: center;
-  margin: 20px;
-  background: #f0f0f0;
-}
-h1 {
-  color: #333;
-}
-.board {
-  display: grid;
-  grid-template-columns: repeat(3, 80px);
-  grid-gap: 10px;
-  justify-content: center;
-  margin: 20px auto;
-}
-.cell {
-  background: white;
-  border: 2px solid #555;
-  font-size: 2.5rem;
-  line-height: 80px;
-  cursor: pointer;
-  user-select: none;
-  width: 80px;
-  height: 80px;
-}
-.cell:hover {
-  background: #ddd;
-}
-#status {
-  font-size: 1.2rem;
-  margin: 10px;
-}
-#resetBtn {
-  padding: 10px 20px;
-  font-size: 1rem;
-  cursor: pointer;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Game Tic Tac Toe 5 ô - 10x10</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+    }
+    #game {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 650px;
+      overflow-x: auto;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 0 auto 10px auto;
+    }
+    td {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #444;
+      font-size: 24px;
+      cursor: pointer;
+      text-align: center;
+      vertical-align: middle;
+      user-select: none;
+      padding: 0;
+    }
+    #status {
+      margin-bottom: 10px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    button {
+      padding: 8px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="status">Đang tải...</div>
+    <table id="board"></table>
+    <button id="resetBtn">Reset Game</button>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
+      authDomain: "test-game-8a541.firebaseapp.com",
+      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "test-game-8a541",
+      storageBucket: "test-game-8a541.firebasestorage.app",
+      messagingSenderId: "396403313237",
+      appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const gameRef = db.ref("tic-tac-toe-5");
+
+    const SIZE = 15; // kích thước bàn cờ 10x10
+    const WIN_COUNT = 5; // số ô liên tiếp thắng
+    let board = Array(SIZE * SIZE).fill(null);
+    let player = null; // 'X' hoặc 'O'
+    let currentTurn = 'X';
+    let gameOver = false;
+
+    const statusDiv = document.getElementById('status');
+    const boardTable = document.getElementById('board');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Tạo bảng bàn cờ động
+    function createBoard(){
+      boardTable.innerHTML = '';
+      for(let r=0; r<SIZE; r++){
+        const tr = document.createElement('tr');
+        for(let c=0; c<SIZE; c++){
+          const td = document.createElement('td');
+          td.dataset.cell = r * SIZE + c;
+          td.addEventListener('click', onCellClick);
+          tr.appendChild(td);
+        }
+        boardTable.appendChild(tr);
+      }
+    }
+
+    // Kiểm tra thắng 5 ô liên tiếp
+    function checkWin(b, p) {
+      // Kiểm tra theo 4 hướng: ngang, dọc, chéo chính, chéo phụ
+      const directions = [
+        [0, 1],   // ngang
+        [1, 0],   // dọc
+        [1, 1],   // chéo chính
+        [1, -1]   // chéo phụ
+      ];
+
+      for(let i=0; i < b.length; i++) {
+        if(b[i] !== p) continue;
+
+        let row = Math.floor(i / SIZE);
+        let col = i % SIZE;
+
+        for(let [dr, dc] of directions){
+          let count = 1;
+
+          for(let step=1; step<WIN_COUNT; step++){
+            let nr = row + dr*step;
+            let nc = col + dc*step;
+            if(nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+            if(b[nr * SIZE + nc] === p){
+              count++;
+            } else {
+              break;
+            }
+          }
+
+          if(count >= WIN_COUNT) return true;
+        }
+      }
+      return false;
+    }
+
+    // Kiểm tra hòa
+    function checkDraw(b){
+      return b.every(cell => cell !== null);
+    }
+
+    // Cập nhật giao diện
+    function render(){
+      const cells = boardTable.querySelectorAll('td');
+      board.forEach((val, idx) => {
+        cells[idx].textContent = val || '';
+      });
+
+      if(gameOver){
+        if(checkWin(board, player)) {
+          statusDiv.textContent = `Người chơi ${player} thắng!`;
+        } else {
+          statusDiv.textContent = `Hòa rồi!`;
+        }
+      } else {
+        statusDiv.textContent = `Lượt người chơi: ${currentTurn}`;
+      }
+    }
+
+    // Xử lý click ô
+    function onCellClick(e){
+      if(gameOver) return;
+
+      if(player !== currentTurn){
+        alert('Chưa đến lượt bạn!');
+        return;
+      }
+
+      const idx = Number(e.target.dataset.cell);
+      if(board[idx] !== null){
+        alert('Ô này đã được chọn!');
+        return;
+      }
+
+      board[idx] = player;
+      gameOver = checkWin(board, player) || checkDraw(board);
+      currentTurn = player === 'X' ? 'O' : 'X';
+      updateGame();
+    }
+
+    // Cập nhật dữ liệu lên Firebase
+    function updateGame(){
+      gameRef.set({
+        board: board,
+        currentTurn: currentTurn,
+        gameOver: gameOver,
+        playerXJoined: true
+      });
+    }
+
+    // Lắng nghe dữ liệu thay đổi trên Firebase
+    gameRef.on('value', snapshot => {
+      const data = snapshot.val();
+      if(!data) {
+        // Khởi tạo game nếu chưa có
+        gameRef.set({
+          board: Array(SIZE * SIZE).fill(null),
+          currentTurn: 'X',
+          gameOver: false,
+          playerXJoined: false
+        });
+        return;
+      }
+
+      board = data.board;
+      currentTurn = data.currentTurn;
+      gameOver = data.gameOver;
+
+      // Xác định người chơi khi lần đầu kết nối
+      if(player === null){
+        player = (data.playerXJoined) ? 'O' : 'X';
+      }
+
+      render();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if(player === null) return;
+      gameRef.set({
+        board: Array(SIZE * SIZE).fill(null),
+        currentTurn: 'X',
+        gameOver: false,
+        playerXJoined: false
+      });
+    });
+
+    // Tạo bàn cờ khi mở trang
+    createBoard();
+
+  </script>
+</body>
+</html>
