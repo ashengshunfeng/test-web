@@ -3,52 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Game Tic Tac Toe 5 ô - 10x10</title>
+  <title>Tic Tac Toe 5 in a Row (10x10)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f0f0f0;
+      margin: 0;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       height: 100vh;
-      margin: 0;
-      flex-direction: column;
+      justify-content: center;
     }
     #game {
       background: white;
-      padding: 20px;
+      padding: 15px;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      text-align: center;
+      box-shadow: 0 0 12px rgba(0,0,0,0.15);
       max-width: 650px;
+      width: 100%;
       overflow-x: auto;
+      text-align: center;
     }
     table {
       border-collapse: collapse;
-      margin: 0 auto 10px auto;
+      margin: 10px auto;
+      user-select: none;
     }
     td {
       width: 40px;
       height: 40px;
       border: 1px solid #444;
-      font-size: 24px;
+      font-size: 26px;
+      line-height: 40px;
       cursor: pointer;
-      text-align: center;
       vertical-align: middle;
-      user-select: none;
+      text-align: center;
       padding: 0;
+      transition: background-color 0.3s;
+    }
+    td:hover {
+      background-color: #d0eaff;
     }
     #status {
-      margin-bottom: 10px;
       font-weight: bold;
-      font-size: 18px;
+      font-size: 20px;
+      margin-bottom: 10px;
+      min-height: 24px;
     }
     button {
-      padding: 8px 15px;
+      padding: 8px 16px;
       font-size: 16px;
       cursor: pointer;
+      border: none;
+      background-color: #0078d7;
+      color: white;
+      border-radius: 5px;
       margin-top: 10px;
+    }
+    button:hover {
+      background-color: #005ea1;
     }
   </style>
 </head>
@@ -64,6 +78,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
+    // Firebase config của bạn
     const firebaseConfig = {
       apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
       authDomain: "test-game-8a541.firebaseapp.com",
@@ -78,7 +93,7 @@
     const db = firebase.database();
     const gameRef = db.ref("tic-tac-toe-5");
 
-    const SIZE = 15; // kích thước bàn cờ 10x10
+    const SIZE = 10; // kích thước bàn cờ 10x10
     const WIN_COUNT = 5; // số ô liên tiếp thắng
     let board = Array(SIZE * SIZE).fill(null);
     let player = null; // 'X' hoặc 'O'
@@ -89,7 +104,7 @@
     const boardTable = document.getElementById('board');
     const resetBtn = document.getElementById('resetBtn');
 
-    // Tạo bảng bàn cờ động
+    // Tạo bàn cờ động
     function createBoard(){
       boardTable.innerHTML = '';
       for(let r=0; r<SIZE; r++){
@@ -106,7 +121,6 @@
 
     // Kiểm tra thắng 5 ô liên tiếp
     function checkWin(b, p) {
-      // Kiểm tra theo 4 hướng: ngang, dọc, chéo chính, chéo phụ
       const directions = [
         [0, 1],   // ngang
         [1, 0],   // dọc
@@ -150,6 +164,7 @@
       const cells = boardTable.querySelectorAll('td');
       board.forEach((val, idx) => {
         cells[idx].textContent = val || '';
+        cells[idx].style.backgroundColor = '';
       });
 
       if(gameOver){
@@ -159,7 +174,13 @@
           statusDiv.textContent = `Hòa rồi!`;
         }
       } else {
-        statusDiv.textContent = `Lượt người chơi: ${currentTurn}`;
+        if(player === null){
+          statusDiv.textContent = 'Đang xác định người chơi...';
+        } else if(player !== currentTurn){
+          statusDiv.textContent = `Chờ người chơi ${currentTurn} đánh...`;
+        } else {
+          statusDiv.textContent = `Lượt của bạn (${player})`;
+        }
       }
     }
 
@@ -198,7 +219,6 @@
     gameRef.on('value', snapshot => {
       const data = snapshot.val();
       if(!data) {
-        // Khởi tạo game nếu chưa có
         gameRef.set({
           board: Array(SIZE * SIZE).fill(null),
           currentTurn: 'X',
@@ -208,13 +228,18 @@
         return;
       }
 
-      board = data.board;
-      currentTurn = data.currentTurn;
-      gameOver = data.gameOver;
+      board = data.board || Array(SIZE * SIZE).fill(null);
+      currentTurn = data.currentTurn || 'X';
+      gameOver = data.gameOver || false;
 
-      // Xác định người chơi khi lần đầu kết nối
+      // Xác định người chơi
       if(player === null){
-        player = (data.playerXJoined) ? 'O' : 'X';
+        if(!data.playerXJoined){
+          player = 'X';
+          gameRef.update({playerXJoined: true});
+        } else {
+          player = 'O';
+        }
       }
 
       render();
@@ -230,9 +255,7 @@
       });
     });
 
-    // Tạo bàn cờ khi mở trang
     createBoard();
-
   </script>
 </body>
 </html>
