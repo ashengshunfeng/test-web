@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Chữ chạy và đổi màu nhấp nháy</title>
+<title>Chữ động lực nhảy nháy</title>
 <style>
   body {
-    background: #222;
+    background: #111;
     color: white;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow: hidden;
@@ -18,37 +18,25 @@
     justify-content: center;
   }
   #marquee-container {
-    width: 80vw;
+    width: 90vw;
     overflow: hidden;
     white-space: nowrap;
     border: 2px solid #fff;
-    padding: 10px 0;
-    margin-bottom: 30px;
+    padding: 10px;
+    margin-bottom: 40px;
     position: relative;
   }
   #marquee-text {
     display: inline-block;
-    font-size: 2.5rem;
+    font-size: 2.3rem;
     font-weight: bold;
     padding-left: 100%;
-    animation: marquee 12s linear infinite;
+    animation: marquee 12s linear infinite, colorChange 6s linear infinite, blink 1.5s steps(2, start) infinite;
     user-select: none;
   }
-  /* Chạy chữ từ phải sang trái */
   @keyframes marquee {
-    0% {
-      transform: translateX(0%);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
-  }
-  /* Đổi màu nhấp nháy */
-  #marquee-text {
-    animation-name: marquee, colorChange, blink;
-    animation-duration: 12s, 6s, 1.2s;
-    animation-timing-function: linear, ease-in-out, steps(2, start);
-    animation-iteration-count: infinite;
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-100%); }
   }
   @keyframes colorChange {
     0% { color: #ff3c3c; }
@@ -62,47 +50,50 @@
     25%, 75% { opacity: 0.4; }
   }
 
-  /* Chibi SVG container */
   #chibis {
     display: flex;
     gap: 30px;
+    justify-content: center;
+    align-items: flex-end;
   }
   svg.chibi {
-    width: 120px;
-    height: 160px;
-    user-select: none;
+    width: 100px;
+    height: 140px;
+    animation: bounce 1.5s infinite ease-in-out;
+  }
+  svg.chibi:nth-child(2) {
+    animation-delay: 0.3s;
+  }
+  svg.chibi:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
   }
 </style>
 </head>
 <body>
 
 <div id="marquee-container">
-  <span id="marquee-text">Anh Liang Ăn Cứt. Anh Vỹ bỏ vợ đi</span>
+  <span id="marquee-text">Chịu có làm thì tương lai mới tươi sáng. Cố gắng làm mùng 5 lấy hoa hồng!</span>
 </div>
 
 <div id="chibis">
-  <!-- Chibi 1: cậu trai tóc ngắn -->
   <svg class="chibi" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
     <circle cx="32" cy="24" r="20" fill="#ffdbac" stroke="#000" stroke-width="1.5"/>
     <path d="M22 30 q10 10 20 0" fill="#6b4c3b"/>
     <circle cx="24" cy="22" r="4" fill="#000"/>
     <circle cx="40" cy="22" r="4" fill="#000"/>
     <rect x="14" y="44" width="36" height="36" rx="8" ry="8" fill="#3465a4" />
-    <path d="M24 44 l0 20" stroke="#000" stroke-width="2"/>
-    <path d="M40 44 l0 20" stroke="#000" stroke-width="2"/>
   </svg>
-
-  <!-- Chibi 2: cậu trai tóc dài -->
   <svg class="chibi" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
     <circle cx="32" cy="24" r="20" fill="#ffe0bd" stroke="#000" stroke-width="1.5"/>
     <path d="M12 16 q40 20 40 0" fill="#3a1f0b"/>
     <circle cx="24" cy="22" r="4" fill="#000"/>
     <circle cx="40" cy="22" r="4" fill="#000"/>
     <rect x="14" y="44" width="36" height="36" rx="12" ry="12" fill="#da4a4a" />
-    <path d="M18 60 l28 0" stroke="#000" stroke-width="2"/>
   </svg>
-
-  <!-- Chibi 3: cậu trai cười -->
   <svg class="chibi" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
     <circle cx="32" cy="24" r="20" fill="#f0c090" stroke="#000" stroke-width="1.5"/>
     <path d="M22 30 q10 15 20 0" fill="none" stroke="#000" stroke-width="2" />
