@@ -7,8 +7,11 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
 
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+
     html, body {
-      margin: 0; padding: 0;
       height: 100%;
       background: #fffbe6;
       font-family: 'Comic Neue', cursive, sans-serif;
@@ -19,30 +22,27 @@
     body {
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      min-height: 20vh;
-      padding: 0;
-      position: relative;
+      min-height: 100vh;
+      padding-top: 33vh;
+      padding-bottom: 33vh; /* thêm padding phía dưới bằng phía trên */
     }
 
-    /* Container căn giữa phần chibi + chữ */
     .center-container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      min-height: calc(100vh - 140px); /* giữ chừa chỗ cho icon lớn bên dưới */
-      width: 100%;
+      gap: 30px;
       max-width: 960px;
-      box-sizing: border-box;
+      width: 100%;
+      padding: 0 10px;
+      margin: 0;
     }
 
-    /* Nhãn dán chibi đơn giản */
     .stickers {
       display: flex;
       gap: 40px;
-      margin-bottom: 30px;
       z-index: 10;
     }
 
@@ -53,7 +53,6 @@
       border-radius: 30px 30px 20px 20px;
       box-shadow: 0 6px 8px rgba(0,0,0,0.1);
       position: relative;
-      cursor: default;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -61,7 +60,6 @@
       padding-bottom: 12px;
       transition: transform 0.3s ease;
     }
-
     .chibi:hover {
       transform: scale(1.1);
     }
@@ -93,7 +91,6 @@
       background: #333;
       border-radius: 50% / 70%;
       transform: rotate(10deg);
-      position: relative;
     }
     .eye.right {
       transform: rotate(-10deg);
@@ -130,7 +127,6 @@
       transform: rotate(-20deg);
     }
 
-    /* Wrapper các dòng chữ */
     .rainbow-text-wrapper {
       position: relative;
       width: 100%;
@@ -138,7 +134,6 @@
       overflow: visible;
       z-index: 10;
       pointer-events: none;
-      user-select: none;
     }
 
     .rainbow-line {
@@ -146,11 +141,9 @@
       white-space: nowrap;
       font-size: 2.2rem;
       font-weight: 700;
-      font-family: 'Comic Neue', cursive;
       letter-spacing: 0.04em;
       opacity: 0;
       animation-fill-mode: forwards;
-      cursor: default;
     }
 
     @keyframes slideInLeft {
@@ -165,7 +158,6 @@
       100% { right: 50%; opacity: 1; transform: translateX(50%); }
     }
 
-    /* Tiền bay rơi */
     .money-fall {
       position: fixed;
       top: -40px;
@@ -175,26 +167,14 @@
       pointer-events: none;
       opacity: 0.9;
       z-index: 5;
-      will-change: transform, opacity;
     }
 
     @keyframes fallMoney {
-      0% {
-        transform: translateY(0) rotate(0deg);
-        opacity: 1;
-      }
-      100% {
-        transform: translateY(100vh) rotate(360deg);
-        opacity: 0;
-      }
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
     }
 
-    /* Icon to to rải rác */
     .big-icons {
-      position: fixed;
-      bottom: 20px; /* Đưa xuống sát đáy nhưng cách 20px */
-      left: 50%;
-      transform: translateX(-50%);
       display: flex;
       gap: 40px;
       pointer-events: none;
@@ -203,18 +183,20 @@
       opacity: 0.4;
       animation: pulse 3.5s ease-in-out infinite;
       z-index: 0;
+      justify-content: center;
+      width: 100%;
     }
+
     @keyframes pulse {
-      0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(1);}
-      50% { opacity: 0.6; transform: translateX(-50%) scale(1.1);}
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
     }
   </style>
 </head>
 <body>
-
   <div class="center-container">
-    <div class="stickers" aria-label="Nhãn dán chibi dễ thương an ủi nhau">
-      <div class="chibi" role="img" aria-label="Chibi buồn bên trái">
+    <div class="stickers">
+      <div class="chibi">
         <div class="head">
           <div class="eyes">
             <div class="eye left"></div>
@@ -225,7 +207,7 @@
         <div class="arm-left"></div>
       </div>
 
-      <div class="chibi" role="img" aria-label="Chibi buồn bên phải vỗ an ủi">
+      <div class="chibi">
         <div class="head">
           <div class="eyes">
             <div class="eye left"></div>
@@ -237,13 +219,10 @@
       </div>
     </div>
 
-    <div class="rainbow-text-wrapper" aria-live="polite" aria-atomic="true" aria-relevant="text" aria-label="Dòng chữ nhấp nháy cầu vồng chạy vào giữa màn hình">
-      <!-- Các dòng chữ sẽ tạo ra JS -->
+    <div class="rainbow-text-wrapper"></div>
+    <div class="big-icons">
+      ❤️ 😊 🥰 💪 ❤️ 😊 🥰 💪 ❤️ 😊
     </div>
-  </div>
-
-  <div class="big-icons" aria-hidden="true">
-    ❤️ 😊 🥰 💪 ❤️ 😊 🥰 💪 ❤️ 😊
   </div>
 
   <script>
@@ -262,16 +241,13 @@
       const div = document.createElement('div');
       div.classList.add('rainbow-line');
       div.style.top = (idx * 38) + 'px';
-
       div.style.animation = (idx % 2 === 0 ? 'slideInLeft' : 'slideInRight') + ' 5s forwards';
       div.style.animationDelay = (idx * 1.5) + 's';
-
-      for(let i = 0; i < line.length; i++) {
+      for (let i = 0; i < line.length; i++) {
         const span = document.createElement('span');
         span.textContent = line[i];
         div.appendChild(span);
       }
-
       wrapper.appendChild(div);
     });
 
@@ -286,7 +262,6 @@
     setInterval(rainbowCycle, 350);
 
     const moneyIcons = ['💵', '💰', '💸', '💪', '❤️', '🥰'];
-
     function createMoney() {
       const money = document.createElement('div');
       money.classList.add('money-fall');
@@ -294,13 +269,10 @@
       money.style.left = Math.random() * 100 + 'vw';
       money.style.fontSize = (18 + Math.random()*30) + 'px';
       money.style.animationDuration = (3 + Math.random()*3) + 's';
-      money.style.animationTimingFunction = ['linear','ease-in','ease-out'][Math.floor(Math.random()*3)];
       document.body.appendChild(money);
       money.addEventListener('animationend', () => money.remove());
     }
-
     setInterval(createMoney, 150);
   </script>
-
 </body>
 </html>
