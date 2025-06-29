@@ -1,132 +1,317 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chibi Dollar Motivation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chibi An Ủi + Tiền Bay + Chữ Cầu Vồng</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+
     body {
-      background: linear-gradient(to bottom, #000428, #004e92);
+      margin: 0;
       height: 100vh;
       overflow: hidden;
-      font-family: 'Comic Sans MS', cursive, sans-serif;
-      position: relative;
-    }
-
-    .rainbow-text {
-      position: absolute;
-      top: 10%;
-      left: -100%;
-      width: 90%;
-      text-align: center;
-      font-size: 2rem;
-      font-weight: bold;
-      line-height: 2.8rem;
-      animation: slideIn 2.5s ease-out forwards, rainbow 6s linear infinite;
-      background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
-      background-size: 400% 100%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    @keyframes rainbow {
-      0% { background-position: 0 0; }
-      100% { background-position: 400% 0; }
-    }
-
-    @keyframes slideIn {
-      0% { left: -100%; }
-      100% { left: 5%; }
-    }
-
-    .money {
-      position: absolute;
-      width: 60px;
-      animation: floatDown 6s linear forwards;
-      pointer-events: none;
-      user-select: none;
-      opacity: 0.9;
-    }
-
-    @keyframes floatDown {
-      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
-    }
-
-    .chibi-zone {
-      position: absolute;
-      bottom: 5%;
-      width: 100%;
+      background: #fffbe6;
+      font-family: 'Comic Neue', cursive, sans-serif;
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
-      gap: 25px;
-      flex-wrap: wrap;
+      position: relative;
+      user-select: none;
+      padding: 20px 0;
+    }
+
+    /* Nhãn dán chibi đơn giản */
+    .stickers {
+      position: relative;
+      display: flex;
+      gap: 40px;
+      margin-bottom: 40px;
+      z-index: 10;
     }
 
     .chibi {
+      width: 120px;
+      height: 140px;
+      background: #ffdde1;
+      border-radius: 30px 30px 20px 20px;
+      box-shadow: 0 6px 8px rgba(0,0,0,0.1);
+      position: relative;
+      cursor: default;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: 12px;
+      transition: transform 0.3s ease;
+    }
+
+    .chibi:hover {
+      transform: scale(1.1);
+    }
+
+    /* Đầu */
+    .head {
+      position: absolute;
+      top: 5px;
       width: 100px;
-      height: auto;
+      height: 100px;
+      background: #ffd6d6;
+      border-radius: 50%;
+      box-shadow: inset -6px 4px 6px #ffb3b3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
     }
 
-    .icon-label {
-      text-align: center;
-      color: white;
-      font-size: 1.1rem;
-      margin-top: 5px;
+    /* Mắt buồn */
+    .eyes {
+      width: 60px;
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
     }
 
-    .emoji-img {
-      width: 50px;
-      display: block;
-      margin: 0 auto;
+    .eye {
+      width: 14px;
+      height: 8px;
+      background: #333;
+      border-radius: 50% / 70%;
+      transform: rotate(10deg);
+      position: relative;
+    }
+    .eye.right {
+      transform: rotate(-10deg);
+    }
+
+    /* Miệng buồn */
+    .mouth {
+      width: 40px;
+      height: 15px;
+      border-bottom: 3px solid #a44;
+      border-radius: 0 0 20px 20px;
+      margin-top: 12px;
+      opacity: 0.7;
+    }
+
+    /* Tay đang vỗ an ủi */
+    .arm-left, .arm-right {
+      position: absolute;
+      bottom: 10px;
+      width: 40px;
+      height: 40px;
+      background: #ffd6d6;
+      border-radius: 50% 50% 0 50%;
+      box-shadow: inset -4px 2px 6px #ffb3b3;
+      z-index: 2;
+      transform-origin: top left;
+    }
+    .arm-left {
+      left: -30px;
+      transform: rotate(20deg);
+    }
+    .arm-right {
+      right: -30px;
+      border-radius: 50% 50% 50% 0;
+      transform-origin: top right;
+      transform: rotate(-20deg);
+    }
+
+    /* Wrapper các dòng chữ */
+    .rainbow-text-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      height: 200px;
+      overflow: visible;
+      z-index: 10;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Các dòng chữ */
+    .rainbow-line {
+      position: absolute;
+      white-space: nowrap;
+      font-size: 2.2rem;
+      font-weight: 700;
+      font-family: 'Comic Neue', cursive;
+      letter-spacing: 0.04em;
+      top: 0;
+      opacity: 0;
+      animation-fill-mode: forwards;
+      cursor: default;
+    }
+
+    /* Dòng lẻ chạy từ trái vào giữa */
+    @keyframes slideInLeft {
+      0% { left: -100%; opacity: 0; }
+      70% { left: 50%; opacity: 1; transform: translateX(-50%); }
+      100% { left: 50%; opacity: 1; transform: translateX(-50%); }
+    }
+
+    /* Dòng chẵn chạy từ phải vào giữa */
+    @keyframes slideInRight {
+      0% { right: -100%; opacity: 0; }
+      70% { right: 50%; opacity: 1; transform: translateX(50%); }
+      100% { right: 50%; opacity: 1; transform: translateX(50%); }
+    }
+
+    /* Hiệu ứng đổi màu cầu vồng nhấp nháy */
+    @keyframes rainbowBlink {
+      0%, 100% { color: red; }
+      14% { color: orange; }
+      28% { color: yellow; }
+      42% { color: green; }
+      56% { color: blue; }
+      70% { color: indigo; }
+      84% { color: violet; }
+    }
+
+    /* Tiền bay rơi */
+    .money-fall {
+      position: fixed;
+      top: -40px;
+      font-size: 32px;
+      animation: fallMoney linear forwards;
+      user-select: none;
+      pointer-events: none;
+      opacity: 0.9;
+      z-index: 5;
+      will-change: transform, opacity;
+    }
+
+    @keyframes fallMoney {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Icon to to rải rác */
+    .big-icons {
+      position: fixed;
+      top: 75%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 40px;
+      pointer-events: none;
+      user-select: none;
+      font-size: 70px;
+      opacity: 0.4; /* tăng opacity từ 0.15 lên 0.4 */
+      animation: pulse 3.5s ease-in-out infinite;
+      z-index: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(1);}
+      50% { opacity: 0.6; transform: translateX(-50%) scale(1.1);}
     }
   </style>
 </head>
 <body>
 
-  <!-- Rainbow running multiline text -->
-  <div class="rainbow-text">
-    💰 Want money.<br>
-    💸 I want more money.<br>
-    😢 Boss, don't be sad anymore.<br>
-    💪 Everyone, let's try hard and smile again!
-  </div>
+  <div class="stickers" aria-label="Nhãn dán chibi dễ thương an ủi nhau">
+    <div class="chibi" role="img" aria-label="Chibi buồn bên trái">
+      <div class="head">
+        <div class="eyes">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+        </div>
+        <div class="mouth"></div>
+      </div>
+      <div class="arm-left"></div>
+    </div>
 
-  <!-- Chibi Collection + Labels -->
-  <div class="chibi-zone">
-    <div>
-      <img src="https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif" class="chibi" alt="sad chibi 1">
-      <div class="icon-label">Sad Chibi 😢</div>
-    </div>
-    <div>
-      <img src="https://media.giphy.com/media/3oKIPwoeGErMmaI43C/giphy.gif" class="chibi" alt="comforting chibi">
-      <div class="icon-label">Comforting 🤗</div>
-    </div>
-    <div>
-      <img src="https://media.giphy.com/media/f9k1tV7HyORcngKF8v/giphy.gif" class="chibi" alt="happy jump">
-      <div class="icon-label">Happy Jump 😄</div>
-    </div>
-    <div>
-      <img src="https://media.giphy.com/media/f4bQadlNqGbjK/giphy.gif" class="chibi" alt="high five">
-      <div class="icon-label">High Five ✋</div>
+    <div class="chibi" role="img" aria-label="Chibi buồn bên phải vỗ an ủi">
+      <div class="head">
+        <div class="eyes">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+        </div>
+        <div class="mouth"></div>
+      </div>
+      <div class="arm-right"></div>
     </div>
   </div>
 
-  <!-- Money Rain Script with updated dollar image -->
+  <div class="rainbow-text-wrapper" aria-live="polite" aria-atomic="true" aria-relevant="text" aria-label="Dòng chữ nhấp nháy cầu vồng chạy vào giữa màn hình">
+    <!-- Các dòng chữ sẽ tạo ra JS -->
+  </div>
+
+  <div class="big-icons" aria-hidden="true">
+    ❤️ 😊 🥰 💪 ❤️ 😊 🥰 💪 ❤️ 😊
+  </div>
+
   <script>
-    const dollarURL = 'https://upload.wikimedia.org/wikipedia/commons/1/16/100_dollar_bill.png';
+    // Nội dung chia dòng
+    const lines = [
+      "want money.",
+      "I want more money.",
+      "Boss, don't be sad anymore.",
+      "Everyone, let's try hard. 💪💪"
+    ];
 
-    setInterval(() => {
-      const money = document.createElement('img');
-      money.className = 'money';
-      money.src = dollarURL;
+    const wrapper = document.querySelector('.rainbow-text-wrapper');
+    const colors = ['red','orange','yellow','green','blue','indigo','violet'];
+    let colorIndex = 0;
+
+    // Tạo các dòng chữ và span cho từng chữ để đổi màu
+    lines.forEach((line, idx) => {
+      const div = document.createElement('div');
+      div.classList.add('rainbow-line');
+      div.style.top = (idx * 50) + 'px';
+
+      // Animation khác nhau: lẻ slideInLeft, chẵn slideInRight
+      div.style.animation = (idx % 2 === 0 ? 'slideInLeft' : 'slideInRight') + ' 5s forwards';
+      // Delay để các dòng chạy vào lần lượt
+      div.style.animationDelay = (idx * 1.5) + 's';
+
+      // Tạo từng span cho đổi màu cầu vồng chạy từng chữ
+      for(let i = 0; i < line.length; i++) {
+        const span = document.createElement('span');
+        span.textContent = line[i];
+        div.appendChild(span);
+      }
+
+      wrapper.appendChild(div);
+    });
+
+    // Đổi màu cầu vồng chạy theo từng chữ cho tất cả các dòng, chạy liên tục
+    function rainbowCycle() {
+      const allSpans = document.querySelectorAll('.rainbow-line span');
+      allSpans.forEach((span, i) => {
+        let idx = (colorIndex + i) % colors.length;
+        span.style.color = colors[idx];
+      });
+      colorIndex = (colorIndex + 1) % colors.length;
+    }
+    setInterval(rainbowCycle, 350);
+
+    // Hiệu ứng tiền bay rơi dày đặc hơn
+    const moneyIcons = ['💵', '💰', '💸', '💪', '❤️', '🥰'];
+
+    function createMoney() {
+      const money = document.createElement('div');
+      money.classList.add('money-fall');
+      money.textContent = moneyIcons[Math.floor(Math.random()*moneyIcons.length)];
       money.style.left = Math.random() * 100 + 'vw';
-      money.style.top = '-60px';
-      money.style.transform = `rotate(${Math.random() * 360}deg)`;
+      money.style.fontSize = (18 + Math.random()*30) + 'px';
+      money.style.animationDuration = (3 + Math.random()*3) + 's';
+      money.style.animationTimingFunction = ['linear','ease-in','ease-out'][Math.floor(Math.random()*3)];
       document.body.appendChild(money);
-      setTimeout(() => money.remove(), 6000);
-    }, 180);
+      money.addEventListener('animationend', () => money.remove());
+    }
+
+    // Tăng tốc độ tạo tiền rơi lên, làm dày đặc
+    setInterval(createMoney, 150);
+
   </script>
 
 </body>
