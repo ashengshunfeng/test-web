@@ -1,44 +1,240 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Goldman Sachs | Digital Assets</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Story - Chia sẻ câu chuyện</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 1rem; background: #f9f9f9; }
+    h1 { text-align: center; }
+    #nicknameSection, #storySection { margin-bottom: 20px; }
+    #storyList { margin-top: 20px; }
+    .story { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+    .story img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
+    .comments { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
+    .comment { margin-bottom: 5px; }
+    .emoji-btn { cursor: pointer; margin-right: 5px; }
+    .btn { padding: 5px 10px; cursor: pointer; }
+    input, textarea { width: 100%; padding: 5px; margin-bottom: 10px; box-sizing: border-box; }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>GOLDMAN SACHS</h1>
-    <p>Secure Gold. Smarter Crypto.</p>
-  </header>
 
-  <nav>
-    <a href="#">Home</a>
-    <a href="#">Services</a>
-    <a href="#">About</a>
-    <a href="#">Contact</a>
-  </nav>
+  <h1>Story - Chia sẻ câu chuyện của bạn</h1>
 
-  <main>
-    <section class="intro">
-      <h2>Welcome to the Future of Trading</h2>
-      <p>We specialize in gold trading and cryptocurrency investment — combining traditional value with modern innovation.</p>
-    </section>
+  <section id="nicknameSection">
+    <label for="nicknameInput">Nhập nickname của bạn:</label>
+    <input type="text" id="nicknameInput" placeholder="Nhập nickname..." />
+    <button id="setNicknameBtn" class="btn">Xác nhận</button>
+  </section>
 
-    <section class="features">
-      <div class="feature-box">
-        <h3>Gold Exchange</h3>
-        <p>Buy and sell gold with top-tier market rates and full transparency.</p>
-      </div>
-      <div class="feature-box">
-        <h3>Crypto Portfolio</h3>
-        <p>Track and invest in major cryptocurrencies with smart tools.</p>
-      </div>
-    </section>
-  </main>
+  <section id="storySection" style="display:none;">
+    <h2>Viết câu chuyện</h2>
+    <textarea id="storyInput" rows="4" placeholder="Viết câu chuyện của bạn..."></textarea>
+    <input type="file" id="imageInput" accept="image/*" />
+    <button id="postStoryBtn" class="btn">Đăng câu chuyện</button>
+  </section>
 
-  <footer>
-    <p>&copy; 2025 Goldman Sachs. All rights reserved.</p>
-  </footer>
+  <section id="storyList">
+    <h2>Các câu chuyện</h2>
+    <div id="storiesContainer"></div>
+  </section>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
+      authDomain: "story-2f386.firebaseapp.com",
+      projectId: "story-2f386",
+      storageBucket: "story-2f386.firebasestorage.app",
+      messagingSenderId: "788401479499",
+      appId: "1:788401479499:web:e0938c31b136d9d4c9d2ce"
+    };
+
+    const CLOUDINARY_CLOUD_NAME = "dvtm9plhh";
+    const CLOUDINARY_UPLOAD_PRESET = "Story web";
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentNickname = null;
+
+    const nicknameInput = document.getElementById('nicknameInput');
+    const setNicknameBtn = document.getElementById('setNicknameBtn');
+    const nicknameSection = document.getElementById('nicknameSection');
+    const storySection = document.getElementById('storySection');
+    const storyInput = document.getElementById('storyInput');
+    const imageInput = document.getElementById('imageInput');
+    const postStoryBtn = document.getElementById('postStoryBtn');
+    const storiesContainer = document.getElementById('storiesContainer');
+
+    setNicknameBtn.onclick = () => {
+      const nick = nicknameInput.value.trim();
+      if (!nick) return alert('Vui lòng nhập nickname');
+      currentNickname = nick;
+      nicknameSection.style.display = 'none';
+      storySection.style.display = 'block';
+      loadStories();
+    };
+
+    postStoryBtn.onclick = async () => {
+      const text = storyInput.value.trim();
+      if (!text && !imageInput.files.length) {
+        return alert('Bạn phải nhập câu chuyện hoặc chọn ảnh');
+      }
+      postStoryBtn.disabled = true;
+
+      let imageUrl = null;
+      if (imageInput.files.length > 0) {
+        try {
+          imageUrl = await uploadImage(imageInput.files[0]);
+        } catch (e) {
+          alert('Upload ảnh thất bại');
+          postStoryBtn.disabled = false;
+          return;
+        }
+      }
+
+      const newStoryRef = db.ref('stories').push();
+      await newStoryRef.set({
+        nickname: currentNickname,
+        text: text,
+        imageUrl: imageUrl,
+        timestamp: Date.now(),
+        comments: {}
+      });
+
+      storyInput.value = '';
+      imageInput.value = '';
+      postStoryBtn.disabled = false;
+    };
+
+    function uploadImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+        fetch(url, {
+          method: 'POST',
+          body: formData
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.secure_url) resolve(data.secure_url);
+            else reject(data);
+          })
+          .catch(err => reject(err));
+      });
+    }
+
+    function loadStories() {
+      const storiesRef = db.ref('stories').orderByChild('timestamp');
+      storiesRef.on('value', snapshot => {
+        storiesContainer.innerHTML = '';
+        const stories = snapshot.val();
+        if (!stories) {
+          storiesContainer.innerHTML = '<p>Chưa có câu chuyện nào.</p>';
+          return;
+        }
+        const sortedKeys = Object.keys(stories).sort((a,b) => stories[b].timestamp - stories[a].timestamp);
+        sortedKeys.forEach(key => {
+          const story = stories[key];
+          const storyElem = createStoryElement(key, story);
+          storiesContainer.appendChild(storyElem);
+        });
+      });
+    }
+
+    function createStoryElement(key, story) {
+      const div = document.createElement('div');
+      div.className = 'story';
+
+      const nick = document.createElement('strong');
+      nick.textContent = story.nickname;
+      div.appendChild(nick);
+
+      const time = document.createElement('small');
+      time.style.marginLeft = '10px';
+      time.style.color = '#666';
+      time.textContent = new Date(story.timestamp).toLocaleString();
+      div.appendChild(time);
+
+      const p = document.createElement('p');
+      p.textContent = story.text;
+      div.appendChild(p);
+
+      if (story.imageUrl) {
+        const img = document.createElement('img');
+        img.src = story.imageUrl;
+        div.appendChild(img);
+      }
+
+      const commentsDiv = document.createElement('div');
+      commentsDiv.className = 'comments';
+
+      const comments = story.comments || {};
+      for (const cid in comments) {
+        const comment = comments[cid];
+        const cdiv = document.createElement('div');
+        cdiv.className = 'comment';
+        cdiv.textContent = `${comment.nickname}: ${comment.text}`;
+        commentsDiv.appendChild(cdiv);
+      }
+
+      const commentInput = document.createElement('input');
+      commentInput.type = 'text';
+      commentInput.placeholder = 'Bình luận...';
+      commentInput.style.width = '80%';
+      commentInput.style.marginRight = '5px';
+
+      const commentBtn = document.createElement('button');
+      commentBtn.textContent = 'Gửi';
+      commentBtn.className = 'btn';
+
+      commentBtn.onclick = () => {
+        const ctext = commentInput.value.trim();
+        if (!ctext) return alert('Vui lòng nhập bình luận');
+        const commentsRef = db.ref(`stories/${key}/comments`);
+        commentsRef.push({
+          nickname: currentNickname,
+          text: ctext,
+          timestamp: Date.now()
+        });
+        commentInput.value = '';
+      };
+
+      div.appendChild(commentsDiv);
+      div.appendChild(commentInput);
+      div.appendChild(commentBtn);
+
+      const emojis = ['👍', '❤️', '😂', '😮', '😢', '👏'];
+      const emojiDiv = document.createElement('div');
+      emojiDiv.style.marginTop = '5px';
+      emojis.forEach(emoji => {
+        const btn = document.createElement('span');
+        btn.className = 'emoji-btn';
+        btn.textContent = emoji;
+        btn.title = 'Thả emoji';
+        btn.onclick = () => {
+          const commentsRef = db.ref(`stories/${key}/comments`);
+          commentsRef.push({
+            nickname: currentNickname,
+            text: emoji,
+            timestamp: Date.now()
+          });
+        };
+        emojiDiv.appendChild(btn);
+      });
+      div.appendChild(emojiDiv);
+
+      return div;
+    }
+  </script>
+
 </body>
 </html>
