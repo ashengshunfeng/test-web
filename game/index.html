@@ -76,7 +76,6 @@
       right: -80px;
     }
 
-    /* Opening pull animations */
     @keyframes pullRightIn {
       0% { left: -80px; }
       100% { left: 10px; }
@@ -85,26 +84,7 @@
       0% { right: -80px; }
       100% { right: 10px; }
     }
-    @keyframes pullTextRightIn {
-      0% { left: -100%; }
-      100% { left: 60px; }
-    }
-    @keyframes pullTextLeftIn {
-      0% { left: 100%; }
-      100% { left: 0; }
-    }
 
-    /* After opening, chibi and text are fixed in place */
-    .chibi.opened {
-      animation-fill-mode: forwards;
-      animation-play-state: paused;
-    }
-    .ribbon-text.opened {
-      animation-play-state: running;
-      position: relative;
-    }
-
-    /* Animations */
     @keyframes rainbowMove {
       0% { background-position: 0% 0; }
       100% { background-position: 700% 0; }
@@ -115,7 +95,6 @@
       75% { transform: translateY(-3px) rotate(2deg); }
     }
 
-    /* Chibi pair at bottom */
     .chibi-hug {
       position: fixed;
       bottom: 10px;
@@ -131,7 +110,6 @@
       pointer-events: none;
     }
 
-    /* Money falling */
     .money {
       position: fixed;
       top: -20px;
@@ -153,35 +131,32 @@
 </head>
 <body>
 
-  <!-- Banner lines with chibis -->
   <div class="banner-wrapper">
     <div class="banner">
-      <img id="chibi1" class="chibi" src="https://cdn.jsdelivr.net/gh/lufeee/assets/chibi1.gif" alt="Chibi left" />
+      <img id="chibi1" class="chibi" src="https://i.imgur.com/vOQ8OMu.gif" alt="Chibi left" />
       <div id="text1" class="ribbon-text" style="position: relative; left: -100%;">I WANT MONEY.</div>
     </div>
   </div>
 
   <div class="banner-wrapper">
     <div class="banner">
-      <img id="chibi2" class="chibi right" src="https://cdn.jsdelivr.net/gh/lufeee/assets/chibi2.gif" alt="Chibi right" />
+      <img id="chibi2" class="chibi right" src="https://i.imgur.com/pq7QYjv.gif" alt="Chibi right" />
       <div id="text2" class="ribbon-text" style="position: relative; left: 100%;">I WANT MORE MONEY.</div>
     </div>
   </div>
 
   <div class="banner-wrapper">
     <div class="banner">
-      <img id="chibi3" class="chibi" src="https://cdn.jsdelivr.net/gh/lufeee/assets/chibi3.gif" alt="Chibi left" />
+      <img id="chibi3" class="chibi" src="https://i.imgur.com/vOQ8OMu.gif" alt="Chibi left" />
       <div id="text3" class="ribbon-text" style="position: relative; left: -100%;">BOSS, DON'T BE SAD ANYMORE. KEEP TRYING.</div>
     </div>
   </div>
 
-  <!-- Chibi hugging bottom -->
   <div class="chibi-hug">
-    <img src="https://cdn.jsdelivr.net/gh/lufeee/assets/chibi4_hug1.png" alt="An ủi 1" />
-    <img src="https://cdn.jsdelivr.net/gh/lufeee/assets/chibi5_hug2.png" alt="An ủi 2" />
+    <img src="https://i.imgur.com/9Rg5YHl.png" alt="An ủi 1" />
+    <img src="https://i.imgur.com/gcJeVG7.png" alt="An ủi 2" />
   </div>
 
-  <!-- Money falling container -->
   <div id="money-container"></div>
 
   <script>
@@ -192,8 +167,6 @@
     const chibi3 = document.getElementById('chibi3');
     const text3 = document.getElementById('text3');
 
-    // Animate opening: chibi + text sliding in, then stop.
-    // Duration 4 seconds
     function animateOpening() {
       chibi1.style.animation = 'pullRightIn 4s forwards';
       text1.style.transition = 'left 4s ease-out';
@@ -207,7 +180,6 @@
       text3.style.transition = 'left 4s ease-out';
       text3.style.left = '60px';
 
-      // After animation ends, remove sliding animations and add shake + rainbow color
       setTimeout(() => {
         chibi1.style.animationPlayState = 'paused';
         chibi2.style.animationPlayState = 'paused';
@@ -217,7 +189,6 @@
         text2.style.transition = '';
         text3.style.transition = '';
 
-        // Ensure text stays and continue rainbow + shake
         text1.classList.add('opened');
         text2.classList.add('opened');
         text3.classList.add('opened');
@@ -226,7 +197,6 @@
 
     animateOpening();
 
-    // Money rain effect
     const moneyContainer = document.getElementById('money-container');
 
     function createMoney() {
@@ -250,8 +220,7 @@
       }, 8000);
     }
 
-    setInterval(createMoney, 100);
-
+    setInterval(createMoney, 80);
   </script>
 
 </body>
