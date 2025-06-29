@@ -1,227 +1,153 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chibi Banner with Opening Pull Effect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chibi Pull Banner Loop</title>
   <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
-      margin: 0;
-      background: #000;
+      background: linear-gradient(to bottom, #111, #000);
       overflow: hidden;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       height: 100vh;
-      justify-content: center;
       position: relative;
+      font-family: sans-serif;
     }
-
-    .banner-wrapper {
-      position: relative;
-      width: 80vw;
-      max-width: 900px;
-      height: 80px;
-      margin: 20px 0;
-      overflow: visible;
-    }
-
+    /* Banner with 4 lines */
     .banner {
-      position: relative;
-      height: 80px;
-      background: #111;
-      border: 3px solid #fff;
-      border-radius: 20px;
-      box-shadow: 0 0 20px 5px rgba(255,255,255,0.3);
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      overflow: hidden;
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      opacity: 0;
     }
-
-    .ribbon-text {
-      font-weight: 900;
+    .banner div {
       font-size: 1.8rem;
-      white-space: nowrap;
-      text-transform: uppercase;
-      font-family: 'Arial Black', Arial, sans-serif;
-      background: linear-gradient(90deg, 
-        red, orange, yellow, green, blue, indigo, violet, red);
-      background-size: 700% 100%;
+      font-weight: bold;
+      background: linear-gradient(90deg, red,orange,yellow,green,blue,indigo,violet);
+      background-size: 400%;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      animation: rainbowMove 6s linear infinite, shake 1.5s infinite;
-      /* for Firefox */
-      background-clip: text;
-      color: transparent;
-      padding: 0 20px;
-      position: relative;
-      left: 0;
+      animation: rainbow 5s linear infinite;
+      margin: .2em 0;
     }
-
-    .chibi {
-      position: absolute;
-      width: 70px;
-      bottom: 8px;
-      user-select: none;
-      pointer-events: none;
-      filter: drop-shadow(0 0 3px rgba(0,0,0,0.7));
-      left: -80px; /* start offscreen */
+    @keyframes rainbow {
+      0%{background-position:0 0;}
+      100%{background-position:400% 0;}
     }
-
-    .chibi.right {
-      left: auto;
-      right: -80px;
+    /* Static dancing GIFs */
+    .dance { position:absolute; width:130px; }
+    /* 4 puller chibi PNG */
+    .puller {
+      position:absolute;
+      width:100px;
+      transition: all 1.5s ease;
+      opacity:1;
     }
-
-    @keyframes pullRightIn {
-      0% { left: -80px; }
-      100% { left: 10px; }
-    }
-    @keyframes pullLeftIn {
-      0% { right: -80px; }
-      100% { right: 10px; }
-    }
-
-    @keyframes rainbowMove {
-      0% { background-position: 0% 0; }
-      100% { background-position: 700% 0; }
-    }
-    @keyframes shake {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px) rotate(-2deg); }
-      75% { transform: translateY(-3px) rotate(2deg); }
-    }
-
-    .chibi-hug {
-      position: fixed;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 15px;
-      z-index: 15;
-    }
-    .chibi-hug img {
-      width: 90px;
-      user-select: none;
-      pointer-events: none;
-    }
-
+    /* Money rain */
     .money {
-      position: fixed;
-      top: -20px;
-      font-size: 24px;
-      color: #0f0;
-      animation: fall 6s linear forwards;
-      user-select: none;
-      pointer-events: none;
-      text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
-      z-index: 10;
+      position:absolute;
+      top:-30px;
+      font-size:20px;
+      pointer-events:none;
+      user-select:none;
+      animation: fall 4s linear forwards;
     }
     @keyframes fall {
-      to {
-        transform: translateY(110vh) rotate(360deg);
-        opacity: 0;
-      }
+      to { transform: translateY(110vh) rotate(360deg); opacity:0; }
     }
   </style>
 </head>
 <body>
 
-  <div class="banner-wrapper">
-    <div class="banner">
-      <img id="chibi1" class="chibi" src="https://i.imgur.com/vOQ8OMu.gif" alt="Chibi left" />
-      <div id="text1" class="ribbon-text" style="position: relative; left: -100%;">I WANT MONEY.</div>
-    </div>
+  <!-- Banner -->
+  <div class="banner" id="banner">
+    <div>I want money.</div>
+    <div>I want more money.</div>
+    <div>Boss, don't be sad.</div>
+    <div>Everyone, let's try our best.</div>
   </div>
 
-  <div class="banner-wrapper">
-    <div class="banner">
-      <img id="chibi2" class="chibi right" src="https://i.imgur.com/pq7QYjv.gif" alt="Chibi right" />
-      <div id="text2" class="ribbon-text" style="position: relative; left: 100%;">I WANT MORE MONEY.</div>
-    </div>
-  </div>
+  <!-- 3 GIF nhảy -->
+  <img src="https://media.giphy.com/media/3o7btMCltyDvSgF92E/giphy.gif" class="dance" style="top:60%; left:10%;">
+  <img src="https://media.giphy.com/media/mCRJDo24UvJMA/giphy.gif" class="dance" style="top:60%; left:30%;">
+  <img src="https://media.giphy.com/media/l0MYGb1LuZ3n7dRnO/giphy.gif" class="dance" style="top:60%; right:30%;">
 
-  <div class="banner-wrapper">
-    <div class="banner">
-      <img id="chibi3" class="chibi" src="https://i.imgur.com/vOQ8OMu.gif" alt="Chibi left" />
-      <div id="text3" class="ribbon-text" style="position: relative; left: -100%;">BOSS, DON'T BE SAD ANYMORE. KEEP TRYING.</div>
-    </div>
-  </div>
+  <!-- 4 chibi PNG tĩnh (người kéo chữ) -->
+  <img src="https://i.imgur.com/alyY6mj.png" id="p1" class="puller" style="top:-120px; left:10%;" alt="Chibi1">
+  <img src="https://i.imgur.com/WMK4VYQ.png" id="p2" class="puller" style="top:-120px; right:10%;" alt="Chibi2">
+  <img src="https://i.imgur.com/5lQVhvQ.png" id="p3" class="puller" style="bottom:-120px; left:10%;" alt="Chibi3">
+  <img src="https://i.imgur.com/4H2uQ1x.png" id="p4" class="puller" style="bottom:-120px; right:10%;" alt="Chibi4">
 
-  <div class="chibi-hug">
-    <img src="https://i.imgur.com/9Rg5YHl.png" alt="An ủi 1" />
-    <img src="https://i.imgur.com/gcJeVG7.png" alt="An ủi 2" />
-  </div>
+<script>
+  // tiền rơi
+  setInterval(()=>{
+    const m = document.createElement('div');
+    m.className='money';
+    m.textContent='$';
+    m.style.left = Math.random()*100+'vw';
+    m.style.color = `hsl(${Math.random()*360},100%,70%)`;
+    document.body.appendChild(m);
+    setTimeout(()=>m.remove(),4000);
+  },100);
 
-  <div id="money-container"></div>
+  const banner = document.getElementById('banner');
+  const ps = ['p1','p2','p3','p4'].map(id=>document.getElementById(id));
 
-  <script>
-    const chibi1 = document.getElementById('chibi1');
-    const text1 = document.getElementById('text1');
-    const chibi2 = document.getElementById('chibi2');
-    const text2 = document.getElementById('text2');
-    const chibi3 = document.getElementById('chibi3');
-    const text3 = document.getElementById('text3');
+  function cycle(){
+    // 1) rơi vào vị trí ngoài mép
+    ps.forEach((p,i)=>{
+      if(i<2){
+        p.style.top='10%';
+        p.style.bottom='';
+      } else {
+        p.style.bottom='10%';
+        p.style.top='';
+      }
+      if(i%2===0){
+        p.style.left='10%';
+        p.style.right='';
+      } else {
+        p.style.right='10%';
+        p.style.left='';
+      }
+    });
+    // 2) kéo banner
+    setTimeout(()=>{
+      banner.style.opacity=1;
+      ps.forEach((p,i)=>{
+        if(i%2===0) p.style.left='40%';
+        else p.style.right='40%';
+      });
+    },1500);
 
-    function animateOpening() {
-      chibi1.style.animation = 'pullRightIn 4s forwards';
-      text1.style.transition = 'left 4s ease-out';
-      text1.style.left = '60px';
+    // 3) fade out
+    setTimeout(()=>{
+      banner.style.transition='opacity 1.5s';
+      banner.style.opacity=0;
+      ps.forEach(p=>p.style.opacity=0);
+    },5000);
 
-      chibi2.style.animation = 'pullLeftIn 4s forwards';
-      text2.style.transition = 'left 4s ease-out';
-      text2.style.left = '0';
+    // 4) reset
+    setTimeout(()=>{
+      banner.style.transition='';
+      banner.style.opacity=0;
+      ps.forEach((p,i)=>{
+        p.style.transition='none';
+        p.style.opacity=1;
+        p.style.top = (i<2?'-120px':'');
+        p.style.bottom = (i>=2?'-120px':'');
+        p.style.left = (i%2===0?'10%':'');
+        p.style.right= (i%2===1?'10%':'');
+        void p.offsetWidth;
+        p.style.transition='all 1.5s ease';
+      });
+    },7000);
+  }
 
-      chibi3.style.animation = 'pullRightIn 4s forwards';
-      text3.style.transition = 'left 4s ease-out';
-      text3.style.left = '60px';
-
-      setTimeout(() => {
-        chibi1.style.animationPlayState = 'paused';
-        chibi2.style.animationPlayState = 'paused';
-        chibi3.style.animationPlayState = 'paused';
-
-        text1.style.transition = '';
-        text2.style.transition = '';
-        text3.style.transition = '';
-
-        text1.classList.add('opened');
-        text2.classList.add('opened');
-        text3.classList.add('opened');
-      }, 4000);
-    }
-
-    animateOpening();
-
-    const moneyContainer = document.getElementById('money-container');
-
-    function createMoney() {
-      const money = document.createElement('div');
-      money.classList.add('money');
-      money.style.left = Math.random() * 100 + 'vw';
-      money.style.fontSize = (10 + Math.random() * 20) + 'px';
-      money.style.color = `hsl(${Math.random()*360}, 100%, 50%)`;
-      money.textContent = '$';
-      money.style.top = '-30px';
-      money.style.position = 'fixed';
-      money.style.zIndex = '5';
-      money.style.pointerEvents = 'none';
-
-      moneyContainer.appendChild(money);
-
-      money.style.animationDuration = (4 + Math.random() * 4) + 's';
-
-      setTimeout(() => {
-        money.remove();
-      }, 8000);
-    }
-
-    setInterval(createMoney, 80);
-  </script>
-
+  cycle();
+  setInterval(cycle,8000);
+</script>
 </body>
 </html>
