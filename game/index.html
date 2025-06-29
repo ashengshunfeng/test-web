@@ -19,7 +19,7 @@
       justify-content: center;
       position: relative;
       user-select: none;
-      padding: 20px 0;
+      padding: 10px 0 30px 0; /* giảm padding trên, tăng dưới */
     }
 
     /* Nhãn dán chibi đơn giản */
@@ -27,7 +27,7 @@
       position: relative;
       display: flex;
       gap: 40px;
-      margin-bottom: 40px;
+      margin-bottom: 30px; /* giảm margin dưới */
       z-index: 10;
     }
 
@@ -124,7 +124,7 @@
       position: relative;
       width: 100%;
       max-width: 960px;
-      height: 200px;
+      height: 140px; /* giảm chiều cao */
       overflow: visible;
       z-index: 10;
       pointer-events: none;
@@ -139,11 +139,12 @@
       font-weight: 700;
       font-family: 'Comic Neue', cursive;
       letter-spacing: 0.04em;
-      top: 0;
       opacity: 0;
       animation-fill-mode: forwards;
       cursor: default;
     }
+
+    /* Khoảng cách dòng được tính ở JS */
 
     /* Dòng lẻ chạy từ trái vào giữa */
     @keyframes slideInLeft {
@@ -157,17 +158,6 @@
       0% { right: -100%; opacity: 0; }
       70% { right: 50%; opacity: 1; transform: translateX(50%); }
       100% { right: 50%; opacity: 1; transform: translateX(50%); }
-    }
-
-    /* Hiệu ứng đổi màu cầu vồng nhấp nháy */
-    @keyframes rainbowBlink {
-      0%, 100% { color: red; }
-      14% { color: orange; }
-      28% { color: yellow; }
-      42% { color: green; }
-      56% { color: blue; }
-      70% { color: indigo; }
-      84% { color: violet; }
     }
 
     /* Tiền bay rơi */
@@ -197,7 +187,7 @@
     /* Icon to to rải rác */
     .big-icons {
       position: fixed;
-      top: 75%;
+      top: 68%; /* lên cao hơn trước */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -205,7 +195,7 @@
       pointer-events: none;
       user-select: none;
       font-size: 70px;
-      opacity: 0.4; /* tăng opacity từ 0.15 lên 0.4 */
+      opacity: 0.4;
       animation: pulse 3.5s ease-in-out infinite;
       z-index: 0;
     }
@@ -252,7 +242,7 @@
   <script>
     // Nội dung chia dòng
     const lines = [
-      "I want money.",
+      "want money.",
       "I want more money.",
       "Boss, don't be sad anymore.",
       "Everyone, let's try hard. 💪💪"
@@ -266,7 +256,7 @@
     lines.forEach((line, idx) => {
       const div = document.createElement('div');
       div.classList.add('rainbow-line');
-      div.style.top = (idx * 50) + 'px';
+      div.style.top = (idx * 38) + 'px'; // giảm khoảng cách dòng từ 50px xuống 38px
 
       // Animation khác nhau: lẻ slideInLeft, chẵn slideInRight
       div.style.animation = (idx % 2 === 0 ? 'slideInLeft' : 'slideInRight') + ' 5s forwards';
