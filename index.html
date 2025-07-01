@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Story - Chia sẻ câu chuyện</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
@@ -14,21 +14,22 @@
     #main { flex: 1; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     #sidebar { width: 120px; margin-left: 20px; }
     #sidebar a { display: block; text-align: center; background: #e0e0e0; border-radius: 8px; padding: 20px; text-decoration: none; color: #333; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    #storyInput { width: 100%; height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; margin-bottom: 10px; }
-    #imageInput { margin-bottom: 10px; }
-    #postStoryBtn { padding: 10px; border: none; background: #1877f2; color: #fff; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
-    #storiesContainer { margin-top: 20px; }
+    #authSection, #storySection { margin-bottom: 20px; }
+    #authSection input, #storySection textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+    #authSection button, #storySection button { padding: 10px; border: none; border-radius: 4px; cursor: pointer; }
+    #authSection button { background: #1877f2; color: #fff; }
+    #storySection button { background: #42b72a; color: #fff; }
     .story { border-bottom: 1px solid #eee; padding: 15px 0; }
-    .story:last-child { border-bottom: none; }
     .story-header { font-weight: bold; margin-bottom: 5px; }
     .story-content { margin-bottom: 10px; }
     .story img { max-width: 100%; border-radius: 4px; margin-bottom: 10px; }
     .comments { margin-left: 20px; margin-top: 10px; }
     .comment { margin-bottom: 8px; display: flex; align-items: flex-start; }
     .comment-text { background: #f0f2f5; padding: 8px 12px; border-radius: 12px; font-size: 14px; }
-    .comment-input, .emoji-picker { display: flex; align-items: center; margin-top: 10px; }
+    .comment-input { display: flex; margin-top: 10px; }
     .comment-input input { flex: 1; padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; }
     .comment-input button { padding: 5px 10px; border: none; background: #42b72a; color: #fff; border-radius: 4px; cursor: pointer; }
+    .emoji-picker { display: flex; align-items: center; margin-top: 10px; }
     .emoji-btn { cursor: pointer; margin-right: 5px; font-size: 18px; }
   </style>
 </head>
@@ -43,10 +44,18 @@
 
   <div id="container">
     <div id="main">
-      <h2>Viết câu chuyện</h2>
-      <textarea id="storyInput" placeholder="Viết câu chuyện của bạn..."></textarea>
-      <input type="file" id="imageInput" accept="image/*">
-      <button id="postStoryBtn">Đăng câu chuyện</button>
+      <section id="authSection">
+        <input type="email" id="emailInput" placeholder="Email" />
+        <input type="password" id="passwordInput" placeholder="Mật khẩu" />
+        <button id="loginBtn">Đăng nhập</button>
+        <button id="registerBtn">Đăng ký</button>
+      </section>
+
+      <section id="storySection" style="display:none;">
+        <textarea id="storyInput" rows="4" placeholder="Viết câu chuyện của bạn..."></textarea>
+        <input type="file" id="imageInput" accept="image/*">
+        <button id="postStoryBtn">Đăng câu chuyện</button>
+      </section>
 
       <h2>Các câu chuyện</h2>
       <div id="storiesContainer"></div>
@@ -74,25 +83,46 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    const userEmailSpan = document.getElementById('userEmail');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+    const userEmailSpan = document.getElementById('userEmail');
+    const storySection = document.getElementById('storySection');
+    const postStoryBtn = document.getElementById('postStoryBtn');
     const storyInput = document.getElementById('storyInput');
     const imageInput = document.getElementById('imageInput');
-    const postStoryBtn = document.getElementById('postStoryBtn');
     const storiesContainer = document.getElementById('storiesContainer');
-
-    // Emoji list
     const emojis = ['👍','❤️','😂','😮','😢','👏'];
 
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     auth.onAuthStateChanged(user => {
       if (user) {
         userEmailSpan.textContent = user.email;
+        authSection.style.display = 'none';
+        storySection.style.display = 'block';
         loadStories();
       } else {
-        window.location = 'index.html';
+        userEmailSpan.textContent = '';
+        authSection.style.display = 'block';
+        storySection.style.display = 'none';
       }
     });
+
+    registerBtn.onclick = () => {
+      const email = emailInput.value.trim();
+      const pass = passwordInput.value.trim();
+      if (!email || !pass) return alert('Nhập email và mật khẩu');
+      auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+    };
+
+    loginBtn.onclick = () => {
+      const email = emailInput.value.trim();
+      const pass = passwordInput.value.trim();
+      if (!email || !pass) return alert('Nhập email và mật khẩu');
+      auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+    };
 
     logoutBtn.onclick = () => auth.signOut();
 
@@ -102,26 +132,35 @@
       if (!text && !imageInput.files.length) return alert('Nhập nội dung hoặc chọn ảnh');
       let imageUrl = null;
       if (imageInput.files.length) {
-        const fd = new FormData(); fd.append('file', imageInput.files[0]); fd.append('upload_preset', 'Story web');
+        const fd = new FormData();
+        fd.append('file', imageInput.files[0]);
+        fd.append('upload_preset', 'Story web');
         const res = await fetch(`https://api.cloudinary.com/v1_1/dvtm9plhh/upload`, { method:'POST', body:fd });
-        const data = await res.json(); imageUrl = data.secure_url;
+        const data = await res.json();
+        imageUrl = data.secure_url;
       }
       const newRef = db.ref('stories').push();
-      await newRef.set({ email: user.email, text, imageUrl, timestamp: Date.now() });
-      storyInput.value = '';
-      imageInput.value = '';
+      await newRef.set({
+        email: user.email,
+        text,
+        imageUrl,
+        timestamp: Date.now()
+      });
+      storyInput.value = ''; imageInput.value = '';
     };
 
     function loadStories() {
-      db.ref('stories').orderByChild('timestamp').on('value', snapshot => {
+      db.ref('stories').orderByChild('timestamp').on('value', snap => {
         storiesContainer.innerHTML = '';
-        const stories = snapshot.val() || {};
-        Object.entries(stories).sort((a,b) => b[1].timestamp - a[1].timestamp).forEach(([id, story]) => {
-          const div = document.createElement('div'); div.className='story';
+        const stories = snap.val() || {};
+        Object.entries(stories).sort((a,b) => b[1].timestamp - a[1].timestamp)
+        .forEach(([id, story]) => {
+          const div = document.createElement('div');
+          div.className = 'story';
           div.innerHTML = `
             <div class="story-header">${story.email} <small>${new Date(story.timestamp).toLocaleString()}</small></div>
             <div class="story-content">${story.text}</div>
-            ${story.imageUrl?`<img src="${story.imageUrl}" alt="Story image">`:''}
+            ${story.imageUrl?`<img src=\"${story.imageUrl}\" alt=\"Story image\">`:''}
             <div class="comments" id="comments-${id}"></div>
             <div class="comment-input">
               <input id="input-${id}" placeholder="Viết bình luận...">
@@ -130,8 +169,8 @@
             <div class="emoji-picker" id="emojiPicker-${id}"></div>
           `;
           storiesContainer.appendChild(div);
-          loadComments(id);
           renderEmojiPicker(id);
+          loadComments(id);
         });
       });
     }
@@ -139,11 +178,9 @@
     function renderEmojiPicker(storyId) {
       const picker = document.getElementById(`emojiPicker-${storyId}`);
       emojis.forEach(e => {
-        const btn = document.createElement('span'); btn.className='emoji-btn'; btn.textContent=e;
-        btn.onclick = () => {
-          const input = document.getElementById(`input-${storyId}`);
-          input.value += e;
-        };
+        const btn = document.createElement('span');
+        btn.className = 'emoji-btn'; btn.textContent = e;
+        btn.onclick = () => document.getElementById(`input-${storyId}`).value += e;
         picker.appendChild(btn);
       });
     }
@@ -151,11 +188,13 @@
     function loadComments(storyId) {
       const container = document.getElementById(`comments-${storyId}`);
       db.ref(`stories/${storyId}/comments`).on('value', snap => {
-        container.innerHTML='';
-        const comments = snap.val()||{};
-        Object.entries(comments).sort((a,b)=>a[1].timestamp-b[1].timestamp).forEach(([cid,c]) => {
-          const cdiv = document.createElement('div'); cdiv.className='comment';
-          cdiv.innerHTML = `<div class="comment-text">${c.text}</div>`;
+        container.innerHTML = '';
+        const comments = snap.val() || {};
+        Object.entries(comments).sort((a,b) => a[1].timestamp - b[1].timestamp)
+        .forEach(([cid, c]) => {
+          const cdiv = document.createElement('div');
+          cdiv.className = 'comment';
+          cdiv.innerHTML = `<div class=\"comment-text\">${c.text}</div>`;
           container.appendChild(cdiv);
         });
       });
@@ -167,7 +206,7 @@
       const text = input.value.trim();
       if (!text) return;
       db.ref(`stories/${storyId}/comments`).push({ email: user.email, text, timestamp: Date.now() });
-      input.value='';
+      input.value = '';
     }
   </script>
 </body>
