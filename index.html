@@ -1,42 +1,53 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Story - Chia sẻ câu chuyện</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; background: #f9f9f9; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    h1 { margin: 0; }
-    #gameLink { width: 100px; height: 100px; background: #e0e0e0; border: 2px solid #ccc; display: flex; justify-content: center; align-items: center; cursor: pointer; text-decoration: none; color: #333; font-weight: bold; margin-left: 20px; }
-    #content { display: flex; }
-    #storySection, #storyList { flex: 1; }
-    #storySection { margin-right: 20px; }
-    textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-    input[type=file] { margin-top: 10px; }
-    .btn { padding: 8px 12px; cursor: pointer; margin-top: 10px; }
-    .story { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-    .story img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
+    header { padding: 20px; background: #fff; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    header h1 { margin: 0; font-size: 24px; }
+    header .user-controls { display: flex; align-items: center; }
+    header .user-controls span { margin-right: 10px; }
+    #container { display: flex; max-width: 1000px; margin: 20px auto; }
+    #main { flex: 1; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    #sidebar { width: 120px; margin-left: 20px; }
+    #sidebar a { display: block; text-align: center; background: #e0e0e0; border-radius: 8px; padding: 20px; text-decoration: none; color: #333; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    #storyInput, #imageInput, #postStoryBtn { width: 100%; margin-bottom: 10px; }
+    #storyInput { height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+    #imageInput { padding: 5px; }
+    #postStoryBtn { padding: 10px; border: none; background: #1877f2; color: #fff; border-radius: 4px; cursor: pointer; }
+    #storiesContainer { margin-top: 20px; }
+    .story { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .story:last-child { border-bottom: none; }
+    .story-header { font-weight: bold; margin-bottom: 5px; }
+    .story-content { margin-bottom: 5px; }
+    .story img { max-width: 100%; border-radius: 4px; }
   </style>
 </head>
 <body>
   <header>
     <h1>Story - Chia sẻ câu chuyện</h1>
-    <div style="display:flex; align-items:center;">
+    <div class="user-controls">
       <span id="userEmail"></span>
-      <button id="logoutBtn" class="btn">Đăng xuất</button>
+      <button id="logoutBtn">Đăng xuất</button>
     </div>
   </header>
 
-  <div id="content">
-    <section id="storySection">
+  <div id="container">
+    <div id="main">
       <h2>Viết câu chuyện</h2>
-      <textarea id="storyInput" rows="4" placeholder="Viết câu chuyện của bạn..."></textarea>
-      <input type="file" id="imageInput" accept="image/*" />
-      <button id="postStoryBtn" class="btn">Đăng câu chuyện</button>
-      <a id="gameLink" href="/test-web/game/" class="btn" style="margin-left:20px;">Chơi Game</a>
-    </section>
-    <a id="gameLink" href="game.html">Game</a>
+      <textarea id="storyInput" placeholder="Viết câu chuyện của bạn..."></textarea>
+      <input type="file" id="imageInput" accept="image/*">
+      <button id="postStoryBtn">Đăng câu chuyện</button>
+
+      <h2>Các câu chuyện</h2>
+      <div id="storiesContainer"></div>
+    </div>
+    <div id="sidebar">
+      <a href="/test-web/game/">Game</a>
+    </div>
   </div>
 
   <!-- Firebase SDK -->
@@ -57,7 +68,6 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const userEmailSpan = document.getElementById('userEmail');
     const logoutBtn = document.getElementById('logoutBtn');
     const storyInput = document.getElementById('storyInput');
@@ -65,6 +75,7 @@
     const postStoryBtn = document.getElementById('postStoryBtn');
     const storiesContainer = document.getElementById('storiesContainer');
 
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     auth.onAuthStateChanged(user => {
       if (user) {
         userEmailSpan.textContent = user.email;
@@ -75,27 +86,38 @@
     });
 
     logoutBtn.onclick = () => auth.signOut();
+
     postStoryBtn.onclick = async () => {
       const user = auth.currentUser;
       const text = storyInput.value.trim();
       if (!text && !imageInput.files.length) return alert('Nhập nội dung hoặc chọn ảnh');
       let imageUrl = null;
       if (imageInput.files.length) {
-        const fd = new FormData(); fd.append('file', imageInput.files[0]); fd.append('upload_preset', 'Story web');
+        const fd = new FormData();
+        fd.append('file', imageInput.files[0]);
+        fd.append('upload_preset', 'Story web');
         const res = await fetch(`https://api.cloudinary.com/v1_1/dvtm9plhh/upload`, { method:'POST', body:fd });
-        const d = await res.json(); imageUrl = d.secure_url;
+        const data = await res.json();
+        imageUrl = data.secure_url;
       }
       await db.ref('stories').push({ email: user.email, text, imageUrl, timestamp: Date.now() });
-      storyInput.value = ''; imageInput.value = '';
+      storyInput.value = '';
+      imageInput.value = '';
     };
 
     function loadStories() {
-      db.ref('stories').orderByChild('timestamp').on('value', snap => {
+      db.ref('stories').orderByChild('timestamp').on('value', snapshot => {
         storiesContainer.innerHTML = '';
-        const data = snap.val() || {};
-        Object.values(data).sort((a,b) => b.timestamp - a.timestamp).forEach(s => {
-          const div = document.createElement('div'); div.className = 'story';
-          div.innerHTML = `<strong>${s.email}</strong> <small>${new Date(s.timestamp).toLocaleString()}</small><p>${s.text}</p>${s.imageUrl?`<img src="${s.imageUrl}"/>`:''}`;
+        const stories = snapshot.val() || {};
+        const sorted = Object.entries(stories).sort((a,b) => b[1].timestamp - a[1].timestamp);
+        sorted.forEach(([id, story]) => {
+          const div = document.createElement('div');
+          div.className = 'story';
+          div.innerHTML = `
+            <div class="story-header">${story.email} <small>${new Date(story.timestamp).toLocaleString()}</small></div>
+            <div class="story-content">${story.text}</div>
+            ${story.imageUrl ? `<img src="${story.imageUrl}" alt="Story image">` : ''}
+          `;
           storiesContainer.appendChild(div);
         });
       });
