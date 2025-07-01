@@ -14,26 +14,26 @@
   <canvas id="gameCanvas"></canvas>
   <div id="hud"></div>
 
-  <!-- Firebase SDK compat -->
+  <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    // Firebase config
+    // Cấu hình Firebase
     const firebaseConfig = {
-      apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
-      authDomain: "story-2f386.firebaseapp.com",
-      databaseURL: "https://story-2f386-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "story-2f386",
-      storageBucket: "story-2f386.appspot.com",
-      messagingSenderId: "788401479499",
-      appId: "1:788401479499:web:e0938c31b136d9d4c9d2ce"
+      apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
+      authDomain: "test-game-8a541.firebaseapp.com",
+      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "test-game-8a541",
+      storageBucket: "test-game-8a541.appspot.com",
+      messagingSenderId: "396403313237",
+      appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Canvas
+    // Canvas setup
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
@@ -42,22 +42,22 @@
     class Player {
       constructor(id, x, y) {
         this.id = id;
-        this.x = x; this.y = y;
+        this.x = x;
+        this.y = y;
         this.health = 100;
         this.dead = false;
       }
       draw() {
-        // head & body stick figure
         ctx.strokeStyle = '#f00'; ctx.lineWidth = 3;
         // head
         ctx.beginPath(); ctx.arc(this.x, this.y - 20, 10, 0, Math.PI*2); ctx.stroke();
         // body
         ctx.beginPath(); ctx.moveTo(this.x, this.y - 10); ctx.lineTo(this.x, this.y + 20); ctx.stroke();
         // arms
-        ctx.beginPath(); ctx.moveTo(this.x-15,this.y); ctx.lineTo(this.x+15,this.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x - 15, this.y); ctx.lineTo(this.x + 15, this.y); ctx.stroke();
         // legs
-        ctx.beginPath(); ctx.moveTo(this.x,this.y+20); ctx.lineTo(this.x-10,this.y+35); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(this.x,this.y+20); ctx.lineTo(this.x+10,this.y+35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x, this.y + 20); ctx.lineTo(this.x - 10, this.y + 35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x, this.y + 20); ctx.lineTo(this.x + 10, this.y + 35); ctx.stroke();
       }
     }
 
@@ -67,7 +67,7 @@
 
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     auth.onAuthStateChanged(user => {
-      if (!user) window.location='index.html';
+      if (!user) window.location = 'index.html';
       localId = user.uid;
       joinGame();
       setupListeners();
@@ -75,69 +75,65 @@
     });
 
     function joinGame() {
-      // spawn center
-      const x = canvas.width/2, y = canvas.height/2;
-      players[localId] = new Player(localId,x,y);
-      db.ref(`game/players/${localId}`).set({x,y,health:100, last: Date.now()});
+      const x = canvas.width / 2, y = canvas.height / 2;
+      players[localId] = new Player(localId, x, y);
+      db.ref(`game/players/${localId}`).set({ x, y, health: 100, last: Date.now() });
     }
 
     window.addEventListener('mousemove', e => {
-      const p = players[localId]; if(!p || p.dead) return;
-      p.x=e.clientX; p.y=e.clientY;
-      db.ref(`game/players/${localId}`).update({x:p.x,y:p.y,last:Date.now()});
+      const p = players[localId]; if (!p || p.dead) return;
+      p.x = e.clientX; p.y = e.clientY;
+      db.ref(`game/players/${localId}`).update({ x: p.x, y: p.y, last: Date.now() });
     });
 
     window.addEventListener('click', e => {
-      Object.values(players).forEach(p=>{
-        if(p.id===localId||p.dead) return;
-        const dist=Math.hypot(e.clientX-p.x,e.clientY-p.y);
-        if(dist<30){
-          const dmg=dist<15?10:5;
-          p.health=Math.max(0,p.health-dmg);
+      Object.values(players).forEach(p => {
+        if (p.id === localId || p.dead) return;
+        const dist = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+        if (dist < 30) {
+          const dmg = dist < 15 ? 10 : 5;
+          p.health = Math.max(0, p.health - dmg);
           db.ref(`game/players/${p.id}/health`).set(p.health);
-          if(p.health===0){
-            p.dead=true;
-            setTimeout(()=>respawn(p.id),30000);
+          if (p.health === 0) {
+            p.dead = true;
+            setTimeout(() => respawn(p.id), 30000);
           }
         }
       });
     });
 
-    function respawn(id){
-      if(id===localId){ joinGame(); }
-      else {
-        db.ref(`game/players/${id}`).once('value').then(snap=>{
-          const info=snap.val();
-          if(info) db.ref(`game/players/${id}`).update({health:100,last:Date.now()});
+    function respawn(id) {
+      if (id === localId) {
+        joinGame();
+      } else {
+        db.ref(`game/players/${id}`).once('value').then(snap => {
+          const info = snap.val();
+          if (info) db.ref(`game/players/${id}`).update({ health: 100, last: Date.now() });
         });
       }
     }
 
-    function setupListeners(){
-      db.ref('game/players').on('value',snap=>{
-        const data=snap.val()||{};
-        // update/add
-        Object.entries(data).forEach(([id,info])=>{
-          if(!players[id]) players[id]=new Player(id,info.x,info.y);
-          players[id].x=info.x; players[id].y=info.y; players[id].health=info.health;
+    function setupListeners() {
+      db.ref('game/players').on('value', snap => {
+        const data = snap.val() || {};
+        Object.entries(data).forEach(([id, info]) => {
+          if (!players[id]) players[id] = new Player(id, info.x, info.y);
+          players[id].x = info.x; players[id].y = info.y; players[id].health = info.health;
         });
-        // remove
-        Object.keys(players).forEach(id=>{ if(!data[id]) delete players[id]; });
+        Object.keys(players).forEach(id => { if (!data[id]) delete players[id]; });
       });
     }
 
-    function gameLoop(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      Object.values(players).forEach(p=>{ if(p.health>0) p.draw(); });
-      updateHud();
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      Object.values(players).forEach(p => { if (p.health > 0) p.draw(); });
+      const me = players[localId]; hud.textContent = me ? `HP: ${me.health}` : '';
       requestAnimationFrame(gameLoop);
     }
 
-    function updateHud(){
-      const me=players[localId]; hud.textContent=me?`HP: ${me.health}`:'';
-    }
-
-    window.addEventListener('beforeunload',()=> db.ref(`game/players/${localId}`).remove());
+    window.addEventListener('beforeunload', () => {
+      db.ref(`game/players/${localId}`).remove();
+    });
   </script>
 </body>
 </html>
