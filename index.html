@@ -1,107 +1,183 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Editable Transaction Agreement — Goldman Sachs</n  <style>
-    /* A4 Portrait settings */
-    @page { size: A4 portrait; margin: 20mm; }
-    @media print { html, body { width: 210mm; height: 297mm; } }
-    body { margin:0; padding:0; font-family:'Segoe UI',sans-serif; background:#f4f4f4; color:#2c3e50; }
-    .page { width:210mm; min-height:297mm; margin:40px auto; padding:20mm; background:#fff; box-sizing:border-box;
-             position: relative; }
-    /* Login Modal */
-    #loginModal { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6);
-                  display:flex; align-items:center; justify-content:center; z-index:1000; }
-    #loginModal .modal { background:#fff; padding:20px; border-radius:8px; width:300px; box-shadow:0 2px 10px rgba(0,0,0,0.3); }
-    #loginModal input { width:100%; padding:8px; margin:8px 0; }
-    #loginModal button { width:100%; padding:8px; margin-top:8px; background:#0052cc; color:#fff; border:none; border-radius:4px; }
-    /* Header */
-    .header-frame { background:#e9f3ff; border-radius:6px; padding:5px 20px;
-                     text-align:center; width:calc(100% - 10mm); margin:0 auto 6mm auto; }
-    .header-frame h1, .header-frame h2, .tags span { cursor:text; }
-    .tags span { display:inline-block; margin:0 4px; padding:2px 4px; border:1px solid #0052cc; border-radius:6px; background:#f0f8ff; }
-    /* Content */
-    .content { display:flex; flex-direction:column; gap:6mm; font-size:10pt; line-height:1.5; }
-    .section h3, .section p, .section ol { cursor:text; }
-    .section ol { padding-left:12mm; }
-    /* Footer */
-    .footer { display:flex; flex-direction:column; gap:2.5mm; font-size:10pt; }
-    .sign-grid { display:grid; grid-template-columns:1fr 1fr; align-items:flex-end; column-gap:6mm; width:100%; }
-    .sign-block { position:relative; text-align:center; }
-    .sign-block .line { border-top:1px solid #555; margin:2.5mm auto 0; width:80%; }
-    /* Seal draggable overlay */
-    .party-b .seal { position:absolute; width:38mm; bottom:10mm; left:0; z-index:3; cursor:move; }
-    .party-b .signature { width:60mm; margin:2.5mm auto 2.5mm; position:relative; z-index:1; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Story - Chia sẻ câu chuyện</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 1rem; background: #f9f9f9; }
+    h1 { text-align: center; }
+    section { margin-bottom: 20px; }
+    #storySection, #logoutSection { display: none; }
+    .btn { padding: 5px 10px; cursor: pointer; }
+    input, textarea { width: 100%; padding: 5px; margin-bottom: 10px; box-sizing: border-box; }
+    .story { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+    .story img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
+    .comments { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
   </style>
 </head>
 <body>
-  <div id="loginModal">
-    <div class="modal">
-      <h3>Login to Edit</h3>
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
-      <button id="loginBtn">Login</button>
-    </div>
-  </div>
 
-  <div class="page" id="editor">
-    <div class="header-frame" contenteditable="false">
-      <h1 contenteditable="true">GOLDMAN SACHS GROUP</h1>
-      <div class="tags">
-        <span contenteditable="true">Golden Age</span>
-        <span contenteditable="true">Safe</span>
-        <span contenteditable="true">Legitimate</span>
-      </div>
-      <h2 contenteditable="true">Transaction Agreement</h2>
-    </div>
-    <div class="content">
-      <div class="section">
-        <h3 contenteditable="true">Article 1: Security & Fund Management</h3>
-        <p contenteditable="true">Party B will execute combined orders...</p>
-      </div>
-      <!-- Other sections similarly marked contenteditable -->
-    </div>
-    <div class="footer">
-      <div class="date" contenteditable="true"><strong>Date:</strong> __________</div>
-      <div class="sign-grid">
-        <div class="sign-block party-a">
-          <div class="line"></div>
-          <div contenteditable="true">Signature of Party A (Trading Party)</div>
-        </div>
-        <div class="sign-block party-b">
-          <img class="seal" src="https://i.imgur.com/7vNny0K.png" draggable="true" />
-          <img class="signature" src="https://i.imgur.com/DWJ9Jj2.png" />
-          <div class="line"></div>
-          <div contenteditable="true">Signature of Party B (Goldman Sachs)</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <h1>Story - Chia sẻ câu chuyện của bạn</h1>
+
+  <!-- Đăng ký / Đăng nhập -->
+  <section id="authSection">
+    <h2>Đăng nhập / Đăng ký</h2>
+    <input type="email" id="emailInput" placeholder="Email" />
+    <input type="password" id="passwordInput" placeholder="Mật khẩu" />
+    <button id="loginBtn" class="btn">Đăng nhập</button>
+    <button id="registerBtn" class="btn">Đăng ký</button>
+  </section>
+
+  <!-- Đăng xuất -->
+  <section id="logoutSection">
+    <span id="userEmail"></span>
+    <button id="logoutBtn" class="btn">Đăng xuất</button>
+  </section>
+
+  <!-- Viết và đăng câu chuyện -->
+  <section id="storySection">
+    <h2>Viết câu chuyện</h2>
+    <textarea id="storyInput" rows="4" placeholder="Viết câu chuyện của bạn..."></textarea>
+    <input type="file" id="imageInput" accept="image/*" />
+    <button id="postStoryBtn" class="btn">Đăng câu chuyện</button>
+  </section>
+
+  <!-- Danh sách các câu chuyện -->
+  <section id="storyList">
+    <h2>Các câu chuyện</h2>
+    <div id="storiesContainer"></div>
+  </section>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-    // Simple login validation (hard-coded for demo)
-    document.getElementById('loginBtn').onclick = () => {
-      const u = document.getElementById('username').value;
-      const p = document.getElementById('password').value;
-      if(u==='admin' && p==='password'){
-        document.getElementById('loginModal').style.display='none';
-        // Enable editing
-        document.querySelectorAll('[contenteditable]').forEach(el=> el.setAttribute('contenteditable','true'));
-        // Make seal draggable
-        const seal = document.querySelector('.seal');
-        seal.addEventListener('dragstart', e => {
-          e.dataTransfer.setData('text/plain', null);
-        });
-        document.getElementById('editor').addEventListener('dragover', e=> e.preventDefault());
-        document.getElementById('editor').addEventListener('drop', e=> {
-          e.preventDefault();
-          const x = e.offsetX - seal.width/2;
-          const y = e.offsetY - seal.height/2;
-          seal.style.left = x + 'px';
-          seal.style.bottom = (document.getElementById('editor').clientHeight - y - seal.height) + 'px';
-        });
-      } else alert('Invalid credentials');
+    const firebaseConfig = {
+      apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
+      authDomain: "story-2f386.firebaseapp.com",
+      projectId: "story-2f386",
+      storageBucket: "story-2f386.appspot.com",
+      messagingSenderId: "788401479499",
+      appId: "1:788401479499:web:e0938c31b136d9d4c9d2ce"
     };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Thiết lập persistence
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+    // DOM elements
+    const authSection = document.getElementById('authSection');
+    const logoutSection = document.getElementById('logoutSection');
+    const userEmailSpan = document.getElementById('userEmail');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const storySection = document.getElementById('storySection');
+    const postStoryBtn = document.getElementById('postStoryBtn');
+    const storyInput = document.getElementById('storyInput');
+    const imageInput = document.getElementById('imageInput');
+    const storiesContainer = document.getElementById('storiesContainer');
+
+    // Xử lý auth state
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        authSection.style.display = 'none';
+        logoutSection.style.display = 'block';
+        storySection.style.display = 'block';
+        userEmailSpan.textContent = user.email;
+        loadStories();
+      } else {
+        authSection.style.display = 'block';
+        logoutSection.style.display = 'none';
+        storySection.style.display = 'none';
+        storiesContainer.innerHTML = '';
+      }
+    });
+
+    // Đăng ký
+    registerBtn.onclick = () => {
+      const email = emailInput.value;
+      const pass = passwordInput.value;
+      if (!email || !pass) return alert('Vui lòng điền email và mật khẩu');
+      auth.createUserWithEmailAndPassword(email, pass)
+        .catch(err => alert(err.message));
+    };
+
+    // Đăng nhập
+    loginBtn.onclick = () => {
+      const email = emailInput.value;
+      const pass = passwordInput.value;
+      if (!email || !pass) return alert('Vui lòng điền email và mật khẩu');
+      auth.signInWithEmailAndPassword(email, pass)
+        .catch(err => alert(err.message));
+    };
+
+    // Đăng xuất
+    logoutBtn.onclick = () => auth.signOut();
+
+    // Đăng story
+    postStoryBtn.onclick = async () => {
+      const user = auth.currentUser;
+      if (!user) return alert('Vui lòng đăng nhập');
+      const text = storyInput.value.trim();
+      if (!text && !imageInput.files.length) return alert('Bạn phải nhập câu chuyện hoặc chọn ảnh');
+      postStoryBtn.disabled = true;
+      let imageUrl = null;
+      if (imageInput.files.length) {
+        try { imageUrl = await uploadImage(imageInput.files[0]); }
+        catch { alert('Upload ảnh thất bại'); postStoryBtn.disabled = false; return; }
+      }
+      const newStoryRef = db.ref('stories').push();
+      await newStoryRef.set({
+        uid: user.uid,
+        nickname: user.email.split('@')[0],
+        text, imageUrl,
+        timestamp: Date.now()
+      });
+      storyInput.value = '';
+      imageInput.value = '';
+      postStoryBtn.disabled = false;
+    };
+
+    // Load stories
+    function loadStories() {
+      const storiesRef = db.ref('stories').orderByChild('timestamp');
+      storiesRef.on('value', snap => {
+        storiesContainer.innerHTML = '';
+        const data = snap.val();
+        if (!data) return storiesContainer.innerHTML = '<p>Chưa có câu chuyện nào.</p>';
+        Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp)
+          .forEach(key => storiesContainer.appendChild(createStoryElement(key, data[key])));
+      });
+    }
+
+    // Tạo phần tử story
+    function createStoryElement(key, story) {
+      const div = document.createElement('div'); div.className = 'story';
+      div.innerHTML = `
+        <strong>${story.nickname}</strong> <small>${new Date(story.timestamp).toLocaleString()}</small>
+        <p>${story.text}</p>
+        ${story.imageUrl ? `<img src="${story.imageUrl}" />` : ''}
+      `;
+      return div;
+    }
+
+    // Upload ảnh lên Cloudinary
+    const CLOUD_NAME = 'dvtm9plhh', UPLOAD_PRESET = 'Story web';
+    function uploadImage(file) {
+      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+      const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', UPLOAD_PRESET);
+      return fetch(url, { method:'POST', body: fd })
+        .then(res => res.json())
+        .then(data => { if (data.secure_url) return data.secure_url; throw new Error('Upload lỗi'); });
+    }
   </script>
 </body>
 </html>
