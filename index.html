@@ -8,17 +8,18 @@
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 1rem; background: #f9f9f9; }
     h1 { text-align: center; }
     section { margin-bottom: 20px; }
+    #authSection, #logoutSection, #storySection { text-align: center; }
     #storySection, #logoutSection { display: none; }
-    .btn { padding: 5px 10px; cursor: pointer; }
-    input, textarea { width: 100%; padding: 5px; margin-bottom: 10px; box-sizing: border-box; }
+    .btn { padding: 8px 12px; cursor: pointer; margin: 5px; }
+    input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
     .story { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
     .story img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
-    .comments { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
+    .comment-section { margin-top: 10px; }
+    .comments { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; text-align: left; }
   </style>
 </head>
 <body>
-
-  <h1>Story - Chia sẻ câu chuyện của bạn</h1>
+  <h1>Story - Chia sẻ câu chuyện</h1>
 
   <!-- Đăng ký / Đăng nhập -->
   <section id="authSection">
@@ -35,7 +36,7 @@
     <button id="logoutBtn" class="btn">Đăng xuất</button>
   </section>
 
-  <!-- Viết và đăng câu chuyện -->
+  <!-- Viết câu chuyện -->
   <section id="storySection">
     <h2>Viết câu chuyện</h2>
     <textarea id="storyInput" rows="4" placeholder="Viết câu chuyện của bạn..."></textarea>
@@ -43,7 +44,7 @@
     <button id="postStoryBtn" class="btn">Đăng câu chuyện</button>
   </section>
 
-  <!-- Danh sách các câu chuyện -->
+  <!-- Danh sách câu chuyện -->
   <section id="storyList">
     <h2>Các câu chuyện</h2>
     <div id="storiesContainer"></div>
@@ -55,23 +56,23 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-    const firebaseConfig = {Add commentMore actions
-  apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
-  authDomain: "story-2f386.firebaseapp.com",
-  databaseURL: "https://story-2f386-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "story-2f386",
-  storageBucket: "story-2f386.appspot.com",
-  messagingSenderId: "788401479499",
-  appId: "1:788401479499:web:e0938c31b136d9d4c9d2ce"
-  };
+    // Cấu hình Firebase (đã đúng định dạng)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
+      authDomain: "story-2f386.firebaseapp.com",
+      projectId: "story-2f386",
+      storageBucket: "story-2f386.appspot.com",
+      messagingSenderId: "788401479499",
+      appId: "1:788401479499:web:e0938c31b136d9d4c9d2ce"
+    };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Thiết lập persistence
+    // Giữ trạng thái đăng nhập sau reload
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    // DOM elements
+    // Phần tử DOM
     const authSection = document.getElementById('authSection');
     const logoutSection = document.getElementById('logoutSection');
     const userEmailSpan = document.getElementById('userEmail');
@@ -86,7 +87,7 @@
     const imageInput = document.getElementById('imageInput');
     const storiesContainer = document.getElementById('storiesContainer');
 
-    // Xử lý auth state
+    // Xử lý thay đổi trạng thái auth
     auth.onAuthStateChanged(user => {
       if (user) {
         authSection.style.display = 'none';
@@ -104,20 +105,23 @@
 
     // Đăng ký
     registerBtn.onclick = () => {
-      const email = emailInput.value;
-      const pass = passwordInput.value;
+      console.log('Clicked Register:', emailInput.value, passwordInput.value);
+      const email = emailInput.value.trim();
+      const pass = passwordInput.value.trim();
       if (!email || !pass) return alert('Vui lòng điền email và mật khẩu');
       auth.createUserWithEmailAndPassword(email, pass)
-        .catch(err => alert(err.message));
+        .then(cred => alert('Đăng ký thành công: ' + cred.user.email))
+        .catch(err => alert('Đăng ký thất bại: ' + err.message));
     };
 
     // Đăng nhập
     loginBtn.onclick = () => {
-      const email = emailInput.value;
-      const pass = passwordInput.value;
+      console.log('Clicked Login:', emailInput.value);
+      const email = emailInput.value.trim();
+      const pass = passwordInput.value.trim();
       if (!email || !pass) return alert('Vui lòng điền email và mật khẩu');
       auth.signInWithEmailAndPassword(email, pass)
-        .catch(err => alert(err.message));
+        .catch(err => alert('Đăng nhập thất bại: ' + err.message));
     };
 
     // Đăng xuất
@@ -133,51 +137,47 @@
       let imageUrl = null;
       if (imageInput.files.length) {
         try { imageUrl = await uploadImage(imageInput.files[0]); }
-        catch { alert('Upload ảnh thất bại'); postStoryBtn.disabled = false; return; }
+        catch { return alert('Upload ảnh thất bại'); }
       }
-      const newStoryRef = db.ref('stories').push();
-      await newStoryRef.set({
+      const newRef = db.ref('stories').push();
+      await newRef.set({
         uid: user.uid,
         nickname: user.email.split('@')[0],
-        text, imageUrl,
-        timestamp: Date.now()
+        text, imageUrl, timestamp: Date.now()
       });
       storyInput.value = '';
       imageInput.value = '';
       postStoryBtn.disabled = false;
     };
 
-    // Load stories
+    // Tải story
     function loadStories() {
-      const storiesRef = db.ref('stories').orderByChild('timestamp');
-      storiesRef.on('value', snap => {
+      db.ref('stories').orderByChild('timestamp').on('value', snap => {
         storiesContainer.innerHTML = '';
-        const data = snap.val();
-        if (!data) return storiesContainer.innerHTML = '<p>Chưa có câu chuyện nào.</p>';
+        const data = snap.val() || {};
         Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp)
-          .forEach(key => storiesContainer.appendChild(createStoryElement(key, data[key])));
+          .forEach(key => storiesContainer.appendChild(createStoryElement(data[key])));
       });
     }
 
     // Tạo phần tử story
-    function createStoryElement(key, story) {
+    function createStoryElement(story) {
       const div = document.createElement('div'); div.className = 'story';
       div.innerHTML = `
         <strong>${story.nickname}</strong> <small>${new Date(story.timestamp).toLocaleString()}</small>
-        <p>${story.text}</p>
+        <p>${story.text || ''}</p>
         ${story.imageUrl ? `<img src="${story.imageUrl}" />` : ''}
       `;
       return div;
     }
 
-    // Upload ảnh lên Cloudinary
+    // Upload image
     const CLOUD_NAME = 'dvtm9plhh', UPLOAD_PRESET = 'Story web';
     function uploadImage(file) {
       const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
       const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', UPLOAD_PRESET);
       return fetch(url, { method:'POST', body: fd })
-        .then(res => res.json())
-        .then(data => { if (data.secure_url) return data.secure_url; throw new Error('Upload lỗi'); });
+        .then(res => res.json()).then(data => data.secure_url);
     }
   </script>
 </body>
