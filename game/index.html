@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Multiplayer Arena</title>
+  <title>Game Arena</title>
   <style>
     body, html { margin:0; padding:0; overflow:hidden; background:#222; }
     #gameCanvas { display:block; width:100vw; height:100vh; background:#111; }
-    #hud { position:absolute; top:10px; left:10px; color:#fff; font-family:sans-serif; }
-    #message { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:24px; }
+    #hud { position:absolute; top:10px; left:10px; color:#fff; font-family:sans-serif; z-index:1; }
+    #message { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:24px; z-index:1; }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
   <div id="hud"></div>
   <div id="message">Đang kết nối...</div>
+  <canvas id="gameCanvas"></canvas>
 
   <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    // Cấu hình Firebase của bạn
+    // Firebase config (game)
     const firebaseConfig = {
       apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
       authDomain: "test-game-8a541.firebaseapp.com",
@@ -35,98 +35,94 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Thiết lập canvas
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('hud');
+    const message = document.getElementById('message');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const hud = document.getElementById('hud');
-    const message = document.getElementById('message');
-
     class Player {
-      constructor(id,x,y){
-        this.id=id; this.x=x; this.y=y;
-        this.health=100; this.dead=false;
-      }
+      constructor(id,x,y){ this.id=id; this.x=x; this.y=y; this.health=100; this.dead=false; }
       draw(){
-        ctx.strokeStyle='#0f0';ctx.lineWidth=3;
-        // head
-        ctx.beginPath();ctx.arc(this.x,this.y-20,10,0,2*Math.PI);ctx.stroke();
-        // body
-        ctx.beginPath();ctx.moveTo(this.x,this.y-10);ctx.lineTo(this.x,this.y+20);ctx.stroke();
-        // arms
-        ctx.beginPath();ctx.moveTo(this.x-15,this.y);ctx.lineTo(this.x+15,this.y);ctx.stroke();
-        // legs
-        ctx.beginPath();ctx.moveTo(this.x,this.y+20);ctx.lineTo(this.x-10,this.y+35);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(this.x,this.y+20);ctx.lineTo(this.x+10,this.y+35);ctx.stroke();
+        ctx.strokeStyle = '#0f0'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(this.x,this.y-20,10,0,2*Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x,this.y-10); ctx.lineTo(this.x,this.y+20); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x-15,this.y); ctx.lineTo(this.x+15,this.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x,this.y+20); ctx.lineTo(this.x-10,this.y+35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x,this.y+20); ctx.lineTo(this.x+10,this.y+35); ctx.stroke();
       }
     }
 
-    let players={}, localId;
+    let players = {};
+    let localId;
 
-    // Giữ session
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    auth.onAuthStateChanged(user=>{
-      if(!user) return window.location='/test-web/';
-      localId=user.uid;
-      message.style.display='block';
-      joinGame(); setupListeners(); gameLoop();
+    // Remove redirect; assume user already logged in via Story page
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        localId = user.uid;
+        message.textContent = 'Kết nối thành công';
+        setTimeout(() => message.style.display='none', 1000);
+        spawn(); listen(); loop();
+      } else {
+        // nếu chưa login, vẫn cho vào nhưng id==null --> không tương tác
+        message.textContent = 'Vui lòng đăng nhập ở trang Story';
+      }
     });
 
-    function joinGame(){
-      const x=canvas.width/2, y=canvas.height/2;
-      players[localId]=new Player(localId,x,y);
-      db.ref(`game/players/${localId}`).set({ x,y,health:100,last:Date.now() });
-      message.style.display='none';
+    function spawn() {
+      if (!localId) return;
+      const x = canvas.width/2, y = canvas.height/2;
+      players[localId] = new Player(localId, x, y);
+      db.ref(`game/players/${localId}`).set({ x,y,health:100 });
     }
 
-    window.addEventListener('mousemove',e=>{
-      const p=players[localId]; if(!p||p.dead) return;
+    window.addEventListener('mousemove', e => {
+      if (!localId) return;
+      const p = players[localId]; if (!p||p.dead) return;
       p.x=e.clientX; p.y=e.clientY;
-      db.ref(`game/players/${localId}`).update({ x:p.x,y:p.y,last:Date.now() });
+      db.ref(`game/players/${localId}`).update({ x:p.x, y:p.y });
     });
 
-    window.addEventListener('click',e=>{
+    window.addEventListener('click', e => {
+      if (!localId) return;
       Object.values(players).forEach(p=>{
-        if(p.id===localId||p.dead) return;
-        const d=Math.hypot(e.clientX-p.x,e.clientY-p.y);
-        if(d<30){
-          const dmg=d<15?10:5;
-          p.health=Math.max(0,p.health-dmg);
+        if (p.id===localId||p.dead) return;
+        const d = Math.hypot(e.clientX-p.x, e.clientY-p.y);
+        if (d<30) {
+          const dmg = d<15?10:5; p.health = Math.max(0, p.health-dmg);
           db.ref(`game/players/${p.id}/health`).set(p.health);
-          if(p.health===0){ p.dead=true; setTimeout(()=>respawn(p.id),30000); }
+          if (p.health===0){ p.dead=true; setTimeout(()=>respawn(p.id),30000); }
         }
       });
     });
 
-    function respawn(id){
-      if(id===localId){ joinGame(); }
-      else {
-        db.ref(`game/players/${id}`).update({ health:100,last:Date.now() });
-      }
+    function respawn(id) {
+      if (!id) return;
+      if (id===localId) spawn();
+      else db.ref(`game/players/${id}`).update({ health:100 });
     }
 
-    function setupListeners(){
+    function listen() {
       db.ref('game/players').on('value',snap=>{
-        const data=snap.val()||{};
+        const data = snap.val()||{};
         Object.entries(data).forEach(([id,info])=>{
-          if(!players[id]) players[id]=new Player(id,info.x,info.y);
+          if (!players[id]) players[id]=new Player(id,info.x,info.y);
           players[id].x=info.x; players[id].y=info.y; players[id].health=info.health;
         });
-        Object.keys(players).forEach(id=>{ if(!data[id]) delete players[id]; });
+        Object.keys(players).forEach(id=>{ if (!data[id]) delete players[id]; });
       });
     }
 
-    function gameLoop(){
+    function loop() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
       Object.values(players).forEach(p=>{ if(p.health>0) p.draw(); });
-      const me=players[localId]; hud.textContent=me?`HP: ${me.health}`:'';
-      requestAnimationFrame(gameLoop);
+      const me = players[localId]; hud.textContent = me?`HP: ${me.health}`:'';
+      requestAnimationFrame(loop);
     }
 
     window.addEventListener('beforeunload',()=>{
-      db.ref(`game/players/${localId}`).remove();
+      if (localId) db.ref(`game/players/${localId}`).remove();
     });
   </script>
 </body>
