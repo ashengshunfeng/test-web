@@ -14,7 +14,6 @@
     input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
     .story { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
     .story img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
-    .comment-section { margin-top: 10px; }
     .comments { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; text-align: left; }
   </style>
 </head>
@@ -56,10 +55,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-    // Cấu hình Firebase (đã đúng định dạng)
+    // Cấu hình Firebase (full config với databaseURL và storageBucket chính xác)
     const firebaseConfig = {
       apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
       authDomain: "story-2f386.firebaseapp.com",
+      databaseURL: "https://story-2f386-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "story-2f386",
       storageBucket: "story-2f386.appspot.com",
       messagingSenderId: "788401479499",
@@ -72,7 +72,7 @@
     // Giữ trạng thái đăng nhập sau reload
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    // Phần tử DOM
+    // DOM elements
     const authSection = document.getElementById('authSection');
     const logoutSection = document.getElementById('logoutSection');
     const userEmailSpan = document.getElementById('userEmail');
@@ -105,7 +105,6 @@
 
     // Đăng ký
     registerBtn.onclick = () => {
-      console.log('Clicked Register:', emailInput.value, passwordInput.value);
       const email = emailInput.value.trim();
       const pass = passwordInput.value.trim();
       if (!email || !pass) return alert('Vui lòng điền email và mật khẩu');
@@ -116,7 +115,6 @@
 
     // Đăng nhập
     loginBtn.onclick = () => {
-      console.log('Clicked Login:', emailInput.value);
       const email = emailInput.value.trim();
       const pass = passwordInput.value.trim();
       if (!email || !pass) return alert('Vui lòng điền email và mật khẩu');
@@ -135,8 +133,8 @@
       if (!text && !imageInput.files.length) return alert('Bạn phải nhập câu chuyện hoặc chọn ảnh');
       postStoryBtn.disabled = true;
       postStoryBtn.textContent = 'Đang đăng...';
-      let imageUrl = null;
       try {
+        let imageUrl = null;
         if (imageInput.files.length) {
           imageUrl = await uploadImage(imageInput.files[0]);
         }
@@ -148,7 +146,6 @@
           imageUrl,
           timestamp: Date.now()
         });
-        // Reset form
         storyInput.value = '';
         imageInput.value = '';
         alert('Đăng câu chuyện thành công!');
@@ -161,12 +158,12 @@
       }
     };
 
-    // Tải story
+    // Tải stories
     function loadStories() {
       db.ref('stories').orderByChild('timestamp').on('value', snap => {
         storiesContainer.innerHTML = '';
         const data = snap.val() || {};
-        Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp)
+        Object.keys(data).sort((a, b) => data[b].timestamp - data[a].timestamp)
           .forEach(key => storiesContainer.appendChild(createStoryElement(data[key])));
       });
     }
@@ -182,13 +179,14 @@
       return div;
     }
 
-    // Upload image
+    // Upload ảnh lên Cloudinary
     const CLOUD_NAME = 'dvtm9plhh', UPLOAD_PRESET = 'Story web';
     function uploadImage(file) {
       const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
       const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', UPLOAD_PRESET);
-      return fetch(url, { method:'POST', body: fd })
-        .then(res => res.json()).then(data => data.secure_url);
+      return fetch(url, { method: 'POST', body: fd })
+        .then(res => res.json())
+        .then(data => data.secure_url);
     }
   </script>
 </body>
