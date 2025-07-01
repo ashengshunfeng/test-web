@@ -134,20 +134,31 @@
       const text = storyInput.value.trim();
       if (!text && !imageInput.files.length) return alert('Bạn phải nhập câu chuyện hoặc chọn ảnh');
       postStoryBtn.disabled = true;
+      postStoryBtn.textContent = 'Đang đăng...';
       let imageUrl = null;
-      if (imageInput.files.length) {
-        try { imageUrl = await uploadImage(imageInput.files[0]); }
-        catch { return alert('Upload ảnh thất bại'); }
+      try {
+        if (imageInput.files.length) {
+          imageUrl = await uploadImage(imageInput.files[0]);
+        }
+        const newRef = db.ref('stories').push();
+        await newRef.set({
+          uid: user.uid,
+          nickname: user.email.split('@')[0],
+          text,
+          imageUrl,
+          timestamp: Date.now()
+        });
+        // Reset form
+        storyInput.value = '';
+        imageInput.value = '';
+        alert('Đăng câu chuyện thành công!');
+      } catch (error) {
+        console.error('Lỗi khi đăng story:', error);
+        alert('Đăng câu chuyện thất bại: ' + error.message);
+      } finally {
+        postStoryBtn.disabled = false;
+        postStoryBtn.textContent = 'Đăng câu chuyện';
       }
-      const newRef = db.ref('stories').push();
-      await newRef.set({
-        uid: user.uid,
-        nickname: user.email.split('@')[0],
-        text, imageUrl, timestamp: Date.now()
-      });
-      storyInput.value = '';
-      imageInput.value = '';
-      postStoryBtn.disabled = false;
     };
 
     // Tải story
