@@ -1,162 +1,53 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multiplayer Arena</title>
-  <style>
-    body, html { margin:0; padding:0; overflow:hidden; background:#222; }
-    #gameCanvas { display:block; width:100vw; height:100vh; background:#111; }
-    #hud { position:absolute; top:10px; left:10px; color:#fff; font-family:sans-serif; z-index:1; }
-    #message { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:24px; z-index:1; }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Debug Multiplayer Game</title>
+  <style>body,html{margin:0;padding:0;overflow:hidden;background:#222;}#gameCanvas{display:block;width:100vw;height:100vh;}#hud{position:absolute;top:10px;left:10px;color:#fff;}#log{position:absolute;bottom:10px;left:10px;color:#0f0;font-family:monospace;white-space:pre-wrap;max-height:30vh;overflow:auto;width:300px;}</style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
-  <div id="hud"></div>
+  <div id="hud">HP:</div>
   <div id="message">Đang kết nối...</div>
+  <div id="log"></div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    // Cấu hình Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
-      authDomain: "test-game-8a541.firebaseapp.com",
-      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "test-game-8a541",
-      storageBucket: "test-game-8a541.appspot.com",
-      messagingSenderId: "396403313237",
-      appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const logEl = document.getElementById('log');
+    function log(msg) { logEl.textContent += msg + '\n'; }
 
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const hud = document.getElementById('hud');
-    const message = document.getElementById('message');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const config={apiKey:"AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",authDomain:"test-game-8a541.firebaseapp.com",databaseURL:"https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"test-game-8a541",storageBucket:"test-game-8a541.appspot.com",messagingSenderId:"396403313237",appId:"1:396403313237:web:3eeb142c4ffaffbd5962dc"};
+    firebase.initializeApp(config);
+    const db=firebase.database();
+    const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext('2d');
+    canvas.width=innerWidth; canvas.height=innerHeight;
+    let players={}; let localId='p_'+Math.random().toString(36).substr(2,5);
+    log('LocalId: '+localId);
 
-    // Generate or retrieve unique player ID
-    let localId = sessionStorage.getItem('playerId');
-    if (!localId) {
-      localId = 'p_' + Math.random().toString(36).substr(2,9);
-      sessionStorage.setItem('playerId', localId);
-    }
+    // debug read
+    db.ref('game/players').once('value').then(snap=>{ log('Initial players: '+JSON.stringify(snap.val())); });
+    db.ref('game/players/'+localId).set({x:10,y:10,health:100}).then(()=>log('Set own node'));  
+    db.ref('game/players/'+localId).on('value',snap=>{ log('Own data changed: '+JSON.stringify(snap.val())); });
 
-    class Player {
-      constructor(id, x, y) {
-        this.id = id;
-        this.x = x;
-        this.y = y;
-        this.health = 100;
-        this.dead = false;
-      }
-      draw() {
-        // head
-        ctx.strokeStyle = this.id === localId ? '#0f0' : '#f00';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(this.x, this.y - 20, 10, 0, Math.PI * 2); ctx.stroke();
-        // body
-        ctx.beginPath(); ctx.moveTo(this.x, this.y - 10); ctx.lineTo(this.x, this.y + 20); ctx.stroke();
-        // arms
-        ctx.beginPath(); ctx.moveTo(this.x - 15, this.y); ctx.lineTo(this.x + 15, this.y); ctx.stroke();
-        // legs
-        ctx.beginPath(); ctx.moveTo(this.x, this.y + 20); ctx.lineTo(this.x - 10, this.y + 35); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(this.x, this.y + 20); ctx.lineTo(this.x + 10, this.y + 35); ctx.stroke();
-      }
-    }
-
-    let players = {};
-
-    function showMsg(txt) {
-      message.textContent = txt;
-      message.style.display = 'block';
-    }
-    function hideMsg() {
-      message.style.display = 'none';
-    }
-
-    function spawn() {
-      const x = canvas.width / 2, y = canvas.height / 2;
-      players[localId] = new Player(localId, x, y);
-      db.ref(`game/players/${localId}`).set({ x, y, health: 100 });
-      hideMsg();
-    }
-
-    function moveHandler(e) {
-      const p = players[localId];
-      if (!p || p.dead) return;
-      p.x = e.clientX;
-      p.y = e.clientY;
-      db.ref(`game/players/${localId}`).update({ x: p.x, y: p.y });
-    }
-
-    function clickHandler(e) {
-      Object.values(players).forEach(p => {
-        if (p.id === localId || p.dead) return;
-        const d = Math.hypot(e.clientX - p.x, e.clientY - p.y);
-        if (d < 40) {
-          const dmg = d < 20 ? 10 : 5;
-          p.health = Math.max(0, p.health - dmg);
-          db.ref(`game/players/${p.id}/health`).set(p.health);
-          if (p.health === 0) {
-            p.dead = true;
-            setTimeout(() => respawn(p.id), 30000);
-          }
-        }
-      });
-    }
-
-    function respawn(id) {
-      db.ref(`game/players/${id}`).update({ health: 100 });
-      if (id === localId) {
-        players[id].dead = false;
-        players[id].x = canvas.width/2;
-        players[id].y = canvas.height/2;
-      }
-    }
-
-    function listenPlayers() {
-      showMsg('Đang kết nối...');
-      db.ref('game/players').on('value', snap => {
-        const all = snap.val() || {};
-        Object.entries(all).forEach(([id, info]) => {
-          if (!players[id]) players[id] = new Player(id, info.x, info.y);
-          players[id].x = info.x;
-          players[id].y = info.y;
-          players[id].health = info.health;
-        });
-        // remove
-        Object.keys(players).forEach(id => { if (!all[id]) delete players[id]; });
-        hideMsg();
-      });
-    }
-
-    function gameLoop() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      Object.values(players).forEach(p => {
-        if (p.health > 0) p.draw();
-      });
-      const me = players[localId];
-      hud.textContent = me ? `HP: ${me.health}` : '';
-      requestAnimationFrame(gameLoop);
-    }
-
-    window.addEventListener('mousemove', moveHandler);
-    window.addEventListener('click', clickHandler);
-    window.addEventListener('beforeunload', () => {
-      db.ref(`game/players/${localId}`).remove();
+    // listen all
+    db.ref('game/players').on('value',snap=>{
+      log('All data: '+JSON.stringify(snap.val()));
     });
 
-    // Init
-    showMsg('Đang kết nối...');
-    spawn();
-    listenPlayers();
-    gameLoop();
+    // draw local dot
+    function loop(){ ctx.clearRect(0,0,canvas.width,canvas.height); for(let id in players){ const p=players[id]; ctx.fillStyle=id===localId?'#0f0':'#f00'; ctx.beginPath(); ctx.arc(p.x,p.y,10,0,2*Math.PI); ctx.fill(); } requestAnimationFrame(loop); }
+    loop();
+
+    // update on change
+    db.ref('game/players').on('child_added',snap=>{ const v=snap.val(); players[snap.key]=v; log('child_added '+snap.key); });
+    db.ref('game/players').on('child_changed',snap=>{ const v=snap.val(); players[snap.key]=v; log('child_changed '+snap.key); });
+    db.ref('game/players').on('child_removed',snap=>{ delete players[snap.key]; log('child_removed '+snap.key); });
+
+    // move test
+    window.addEventListener('mousemove',e=>{ players[localId]={x:e.clientX,y:e.clientY,health:players[localId]?.health||100}; db.ref('game/players/'+localId).update({x:e.clientX,y:e.clientY}); });
+
   </script>
 </body>
 </html>
