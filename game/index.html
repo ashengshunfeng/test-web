@@ -1,295 +1,147 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chibi An Ủi + Tiền Bay + Chữ Cầu Vồng</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Arena</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
-
-    *, *::before, *::after {
-      margin: 0; padding: 0; box-sizing: border-box;
-    }
-
-    html, body {
-      height: 100%;
-      background: #fffbe6;
-      font-family: 'Comic Neue', cursive, sans-serif;
-      user-select: none;
-      overflow-x: hidden;
-    }
-
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-
-    .main-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      width: 100%;
-      margin-top: 10vh;
-      position: relative;
-    }
-
-    .center-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 30px;
-    }
-
-    .stickers {
-      display: flex;
-      gap: 40px;
-    }
-
-    .chibi {
-      width: 120px;
-      height: 140px;
-      background: #ffdde1;
-      border-radius: 30px 30px 20px 20px;
-      box-shadow: 0 6px 8px rgba(0,0,0,0.1);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      padding-bottom: 12px;
-      transition: transform 0.3s ease;
-    }
-    .chibi:hover {
-      transform: scale(1.1);
-    }
-
-    .head {
-      position: absolute;
-      top: 5px;
-      width: 100px;
-      height: 100px;
-      background: #ffd6d6;
-      border-radius: 50%;
-      box-shadow: inset -6px 4px 6px #ffb3b3;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-
-    .eyes {
-      width: 60px;
-      display: flex;
-      justify-content: space-between;
-      margin-top: 30px;
-    }
-
-    .eye {
-      width: 14px;
-      height: 8px;
-      background: #333;
-      border-radius: 50% / 70%;
-      transform: rotate(10deg);
-    }
-    .eye.right {
-      transform: rotate(-10deg);
-    }
-
-    .mouth {
-      width: 40px;
-      height: 15px;
-      border-bottom: 3px solid #a44;
-      border-radius: 0 0 20px 20px;
-      margin-top: 12px;
-      opacity: 0.7;
-    }
-
-    .arm-left, .arm-right {
-      position: absolute;
-      bottom: 10px;
-      width: 40px;
-      height: 40px;
-      background: #ffd6d6;
-      border-radius: 50% 50% 0 50%;
-      box-shadow: inset -4px 2px 6px #ffb3b3;
-      z-index: 2;
-      transform-origin: top left;
-    }
-    .arm-left {
-      left: -30px;
-      transform: rotate(20deg);
-    }
-    .arm-right {
-      right: -30px;
-      border-radius: 50% 50% 50% 0;
-      transform-origin: top right;
-      transform: rotate(-20deg);
-    }
-
-    .rainbow-text-wrapper {
-      position: relative;
-      width: 100%;
-      height: 220px;
-      overflow: visible;
-      z-index: 10;
-      pointer-events: none;
-      margin-top: 40px;
-    }
-
-    .rainbow-line {
-      position: absolute;
-      white-space: nowrap;
-      font-size: 2.2rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      opacity: 0;
-      animation-fill-mode: forwards;
-    }
-
-    @keyframes slideInLeft {
-      0% { left: -100%; opacity: 0; }
-      70% { left: 50%; opacity: 1; transform: translateX(-50%); }
-      100% { left: 50%; opacity: 1; transform: translateX(-50%); }
-    }
-
-    @keyframes slideInRight {
-      0% { right: -100%; opacity: 0; }
-      70% { right: 50%; opacity: 1; transform: translateX(50%); }
-      100% { right: 50%; opacity: 1; transform: translateX(50%); }
-    }
-
-    .money-fall {
-      position: fixed;
-      top: -40px;
-      font-size: 32px;
-      animation: fallMoney linear forwards;
-      user-select: none;
-      pointer-events: none;
-      opacity: 0.9;
-      z-index: 5;
-    }
-
-    @keyframes fallMoney {
-      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
-    }
-
-    .big-icons {
-      position: relative;
-      width: 100%;
-      height: 160px;
-      margin-top: 30px;
-      z-index: 1;
-    }
-
-    .big-icons span {
-      position: absolute;
-      font-size: 70px;
-      opacity: 0.4;
-      animation: pulse 3.5s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.4; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(1.1); }
-    }
+    body, html { margin:0; padding:0; overflow:hidden; background:#333; }
+    #gameCanvas { display:block; background:#222; }
+    #hud { position:absolute; top:10px; left:10px; color:#fff; font-family:sans-serif; }
   </style>
 </head>
 <body>
-  <div class="main-wrapper">
-    <div class="center-container">
-      <div class="stickers">
-        <div class="chibi">
-          <div class="head">
-            <div class="eyes">
-              <div class="eye left"></div>
-              <div class="eye right"></div>
-            </div>
-            <div class="mouth"></div>
-          </div>
-          <div class="arm-left"></div>
-        </div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud"></div>
 
-        <div class="chibi">
-          <div class="head">
-            <div class="eyes">
-              <div class="eye left"></div>
-              <div class="eye right"></div>
-            </div>
-            <div class="mouth"></div>
-          </div>
-          <div class="arm-right"></div>
-        </div>
-      </div>
-
-      <div class="rainbow-text-wrapper"></div>
-      <div class="big-icons" id="iconContainer"></div>
-    </div>
-  </div>
-
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    const lines = [
-      "want money.",
-      "I want more money.",
-      "Boss, don't be sad anymore.",
-      "Everyone, let's try hard. 💪💪",
-      "Good luck!"
-    ];
+    // Firebase config (full values)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBk3M_eefgKjG_xgknpQ7yU7dQzjIoyUH4",
+      authDomain: "story-2f386.firebaseapp.com",
+      databaseURL: "https://story-2f386-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "story-2f386",
+      storageBucket: "story-2f386.appspot.com",
+      messagingSenderId: "788401479499",
+      appId: "1:788401479499:web:e0938c31b136d9d4c9d2ce"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-    const wrapper = document.querySelector('.rainbow-text-wrapper');
-    const colors = ['red','orange','yellow','green','blue','indigo','violet'];
-    let colorIndex = 0;
+    // Canvas setup
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    lines.forEach((line, idx) => {
-      const div = document.createElement('div');
-      div.classList.add('rainbow-line');
-      div.style.top = (idx * 38) + 'px';
-      div.style.animation = (idx % 2 === 0 ? 'slideInLeft' : 'slideInRight') + ' 5s forwards';
-      div.style.animationDelay = (idx * 1.5) + 's';
-      for (let i = 0; i < line.length; i++) {
-        const span = document.createElement('span');
-        span.textContent = line[i];
-        div.appendChild(span);
+    class Player {
+      constructor(id, x, y) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.health = 100;
+        this.dead = false;
       }
-      wrapper.appendChild(div);
+      draw() {
+        // body
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(this.x, this.y, 20, 0, Math.PI*2); ctx.fill();
+        // sword
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + 30, this.y);
+        ctx.stroke();
+      }
+    }
+
+    let players = {};
+    let localId;
+    const hud = document.getElementById('hud');
+
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    auth.onAuthStateChanged(user => {
+      if (!user) window.location = 'index.html';
+      localId = user.uid;
+      spawnPlayer();
+      setupListeners();
+      gameLoop();
     });
 
-    function rainbowCycle() {
-      const allSpans = document.querySelectorAll('.rainbow-line span');
-      allSpans.forEach((span, i) => {
-        let idx = (colorIndex + i) % colors.length;
-        span.style.color = colors[idx];
+    function spawnPlayer() {
+      const startX = canvas.width/2, startY = canvas.height/2;
+      players[localId] = new Player(localId, startX, startY);
+      writePlayer(localId, startX, startY, 100);
+    }
+
+    function writePlayer(id, x, y, health) {
+      db.ref(`game/players/${id}`).set({ x, y, health, lastUpdate: Date.now() });
+    }
+
+    canvas.addEventListener('mousemove', e => {
+      const p = players[localId];
+      if (p.dead) return;
+      p.x = e.clientX; p.y = e.clientY;
+      writePlayer(localId, p.x, p.y, p.health);
+    });
+
+    canvas.addEventListener('click', e => {
+      Object.values(players).forEach(p => {
+        if (p.id === localId || p.dead) return;
+        const dx = e.clientX - p.x, dy = e.clientY - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 40) {
+          const dmg = dist < 20 ? 10 : 5;
+          p.health = Math.max(0, p.health - dmg);
+          writePlayer(p.id, p.x, p.y, p.health);
+          if (p.health === 0) handleDeath(p.id);
+        }
       });
-      colorIndex = (colorIndex + 1) % colors.length;
-    }
-    setInterval(rainbowCycle, 350);
+    });
 
-    const moneyIcons = ['💵', '💰', '💸', '💪', '❤️', '🥰'];
-    function createMoney() {
-      const money = document.createElement('div');
-      money.classList.add('money-fall');
-      money.textContent = moneyIcons[Math.floor(Math.random()*moneyIcons.length)];
-      money.style.left = Math.random() * 100 + 'vw';
-      money.style.fontSize = (18 + Math.random()*30) + 'px';
-      money.style.animationDuration = (3 + Math.random()*3) + 's';
-      document.body.appendChild(money);
-      money.addEventListener('animationend', () => money.remove());
+    function handleDeath(id) {
+      players[id].dead = true;
+      setTimeout(() => {
+        if (id === localId) spawnPlayer();
+      }, 30000);
     }
-    setInterval(createMoney, 150);
 
-    // Big icon ngẫu nhiên dưới dòng chữ
-    const iconContainer = document.getElementById('iconContainer');
-    const staticIcons = ['❤️','😊','🥰','💪','💵','💰','💸'];
-    for (let i = 0; i < 16; i++) {
-      const span = document.createElement('span');
-      span.textContent = staticIcons[Math.floor(Math.random() * staticIcons.length)];
-      span.style.left = Math.random() * 95 + '%';
-      span.style.top = Math.random() * 130 + 'px';
-      iconContainer.appendChild(span);
+    function setupListeners() {
+      db.ref('game/players').on('value', snap => {
+        const data = snap.val() || {};
+        Object.entries(data).forEach(([id, info]) => {
+          if (!players[id]) players[id] = new Player(id, info.x, info.y);
+          players[id].x = info.x; players[id].y = info.y;
+          players[id].health = info.health;
+        });
+        // remove disconnected
+        Object.keys(players).forEach(id => {
+          if (!data[id]) delete players[id];
+        });
+      });
     }
+
+    function gameLoop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      Object.values(players).forEach(p => {
+        if (p.health > 0) p.draw();
+      });
+      updateHud();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function updateHud() {
+      const me = players[localId];
+      hud.textContent = me ? `Máu: ${me.health}` : '';
+    }
+
+    window.addEventListener('beforeunload', () => {
+      db.ref(`game/players/${localId}`).remove();
+    });
   </script>
 </body>
 </html>
