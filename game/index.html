@@ -1,53 +1,145 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Debug Multiplayer Game</title>
-  <style>body,html{margin:0;padding:0;overflow:hidden;background:#222;}#gameCanvas{display:block;width:100vw;height:100vh;}#hud{position:absolute;top:10px;left:10px;color:#fff;}#log{position:absolute;bottom:10px;left:10px;color:#0f0;font-family:monospace;white-space:pre-wrap;max-height:30vh;overflow:auto;width:300px;}</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multiplayer Arena</title>
+  <style>
+    body, html { margin: 0; padding: 0; overflow: hidden; background: #222; }
+    #hud { position: absolute; top: 10px; left: 10px; color: #fff; font-family: sans-serif; z-index: 1; }
+    #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 24px; z-index: 1; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <div id="hud">HP:</div>
+  <div id="hud">HP: --</div>
   <div id="message">Đang kết nối...</div>
-  <div id="log"></div>
+  <canvas id="gameCanvas"></canvas>
 
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    const logEl = document.getElementById('log');
-    function log(msg) { logEl.textContent += msg + '\n'; }
+    // Firebase config for game
+    const firebaseConfig = {
+      apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
+      authDomain: "test-game-8a541.firebaseapp.com",
+      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "test-game-8a541",
+      storageBucket: "test-game-8a541.appspot.com",
+      messagingSenderId: "396403313237",
+      appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const config={apiKey:"AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",authDomain:"test-game-8a541.firebaseapp.com",databaseURL:"https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"test-game-8a541",storageBucket:"test-game-8a541.appspot.com",messagingSenderId:"396403313237",appId:"1:396403313237:web:3eeb142c4ffaffbd5962dc"};
-    firebase.initializeApp(config);
-    const db=firebase.database();
-    const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext('2d');
-    canvas.width=innerWidth; canvas.height=innerHeight;
-    let players={}; let localId='p_'+Math.random().toString(36).substr(2,5);
-    log('LocalId: '+localId);
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('hud');
+    const message = document.getElementById('message');
 
-    // debug read
-    db.ref('game/players').once('value').then(snap=>{ log('Initial players: '+JSON.stringify(snap.val())); });
-    db.ref('game/players/'+localId).set({x:10,y:10,health:100}).then(()=>log('Set own node'));  
-    db.ref('game/players/'+localId).on('value',snap=>{ log('Own data changed: '+JSON.stringify(snap.val())); });
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-    // listen all
-    db.ref('game/players').on('value',snap=>{
-      log('All data: '+JSON.stringify(snap.val()));
+    // Unique session ID
+    let localId = sessionStorage.getItem('playerId');
+    if (!localId) {
+      localId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+      sessionStorage.setItem('playerId', localId);
+    }
+
+    class Player {
+      constructor(id, x, y, health) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.health = health;
+      }
+      draw() {
+        ctx.strokeStyle = this.id === localId ? '#0f0' : '#f00';
+        ctx.lineWidth = 3;
+        // head
+        ctx.beginPath(); ctx.arc(this.x, this.y-20, 10, 0, Math.PI*2); ctx.stroke();
+        // body
+        ctx.beginPath(); ctx.moveTo(this.x, this.y-10); ctx.lineTo(this.x, this.y+20); ctx.stroke();
+        // arms
+        ctx.beginPath(); ctx.moveTo(this.x-15, this.y); ctx.lineTo(this.x+15, this.y); ctx.stroke();
+        // legs
+        ctx.beginPath(); ctx.moveTo(this.x, this.y+20); ctx.lineTo(this.x-10, this.y+35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x, this.y+20); ctx.lineTo(this.x+10, this.y+35); ctx.stroke();
+      }
+    }
+
+    let players = {};
+
+    function showMessage(text) {
+      message.textContent = text;
+      message.style.display = 'block';
+    }
+    function hideMessage() {
+      message.style.display = 'none';
+    }
+
+    // Spawn or update own player
+    function spawn() {
+      const x = canvas.width/2;
+      const y = canvas.height/2;
+      db.ref(`game/players/${localId}`).set({ x, y, health: 100 });
+    }
+
+    window.addEventListener('mousemove', e => {
+      if (!players[localId]) return;
+      db.ref(`game/players/${localId}`).update({ x: e.clientX, y: e.clientY });
     });
 
-    // draw local dot
-    function loop(){ ctx.clearRect(0,0,canvas.width,canvas.height); for(let id in players){ const p=players[id]; ctx.fillStyle=id===localId?'#0f0':'#f00'; ctx.beginPath(); ctx.arc(p.x,p.y,10,0,2*Math.PI); ctx.fill(); } requestAnimationFrame(loop); }
-    loop();
+    window.addEventListener('click', e => {
+      Object.values(players).forEach(p => {
+        if (p.id === localId) return;
+        const d = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+        if (d < 30) {
+          const dmg = d < 15 ? 10 : 5;
+          const newHp = Math.max(0, p.health - dmg);
+          db.ref(`game/players/${p.id}/health`).set(newHp);
+          if (newHp === 0) setTimeout(() => revive(p.id), 30000);
+        }
+      });
+    });
 
-    // update on change
-    db.ref('game/players').on('child_added',snap=>{ const v=snap.val(); players[snap.key]=v; log('child_added '+snap.key); });
-    db.ref('game/players').on('child_changed',snap=>{ const v=snap.val(); players[snap.key]=v; log('child_changed '+snap.key); });
-    db.ref('game/players').on('child_removed',snap=>{ delete players[snap.key]; log('child_removed '+snap.key); });
+    function revive(id) {
+      db.ref(`game/players/${id}`).update({ health: 100 });
+    }
 
-    // move test
-    window.addEventListener('mousemove',e=>{ players[localId]={x:e.clientX,y:e.clientY,health:players[localId]?.health||100}; db.ref('game/players/'+localId).update({x:e.clientX,y:e.clientY}); });
+    // Listen to all players
+    db.ref('game/players').on('value', snap => {
+      const data = snap.val() || {};
+      players = {};
+      Object.entries(data).forEach(([id, info]) => {
+        players[id] = new Player(id, info.x, info.y, info.health);
+      });
+      hideMessage();
+    });
 
+    // Render loop
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      Object.values(players).forEach(p => { if (p.health > 0) p.draw(); });
+      const me = players[localId];
+      hud.textContent = 'HP: ' + (me ? me.health : 0);
+      requestAnimationFrame(render);
+    }
+
+    window.addEventListener('beforeunload', () => {
+      db.ref(`game/players/${localId}`).remove();
+    });
+
+    // Init game
+    showMessage('Đang kết nối...');
+    spawn();
+    render();
   </script>
 </body>
 </html>
