@@ -1,32 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <title>Stickman Multiplayer Game - Animated</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stickman Multiplayer Game</title>
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; }
-    body { background: #222; width: 100vw; height: 100vh; overflow: hidden; }
-    #gameCanvas { background: #222; display: block; margin: 0 auto; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
-    #nicknameForm {
-      position: absolute; left: 50%; top: 35%; transform: translate(-50%, -50%); z-index: 10;
-      background: rgba(30,30,30,0.97); padding: 32px 38px; border-radius: 10px; box-shadow: 0 2px 16px #0007;
-      display: flex; flex-direction: column; align-items: center; gap: 12px; border: 1px solid #333; min-width: 340px;
+    body { margin: 0; overflow: hidden; background: #222; }
+    #nicknameModal {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.8); z-index: 10; display: flex; align-items: center; justify-content: center;
     }
-    #nicknameForm input { font-size: 20px; padding: 8px; border-radius: 5px; border: 1px solid #444; }
-    #nicknameForm button { font-size: 20px; padding: 8px 18px; border-radius: 5px; border: none; background: #1877f2; color: #fff; cursor: pointer; }
+    #nicknameBox {
+      background: #fff; padding: 32px; border-radius: 16px; text-align: center;
+      box-shadow: 0 6px 36px #0007;
+    }
+    #nicknameInput { font-size: 20px; padding: 12px; width: 230px; margin-bottom: 18px; }
+    #nicknameBtn { padding: 12px 30px; font-size: 18px; border: none; background: #1877f2; color: #fff; border-radius: 8px; cursor: pointer; }
+    #info { position: fixed; left: 12px; top: 10px; color: #fff; font-size: 22px; z-index: 2; font-family: Arial,sans-serif; }
   </style>
 </head>
 <body>
-  <div id="nicknameForm">
-    <h2 style="color:#fff;margin-bottom:0">Đặt Nickname</h2>
-    <input id="nicknameInput" maxlength="12" placeholder="Nhập nickname..." />
-    <button id="joinBtn">Vào game</button>
+<div id="nicknameModal">
+  <div id="nicknameBox">
+    <h2>Chọn Nickname</h2>
+    <input id="nicknameInput" maxlength="16" placeholder="Nickname...">
+    <br>
+    <button id="nicknameBtn">Vào game</button>
   </div>
-  <canvas id="gameCanvas" width="1280" height="650"></canvas>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script>
-// --- Config ---
+</div>
+<canvas id="game" width="1500" height="700"></canvas>
+<div id="info"></div>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script>
+// ĐÚNG THÔNG TIN FIREBASE CỦA BẠN!
 const firebaseConfig = {
   apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
   authDomain: "test-game-8a541.firebaseapp.com",
@@ -39,310 +46,196 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- Utils ---
-function randomColor() {
-  const colors = ["#43e", "#e43", "#09d", "#ee0", "#0e6", "#fd0", "#e09", "#0fa", "#fa0", "#999"];
+// Stickman màu ngẫu nhiên mỗi người
+function getRandomColor() {
+  const colors = ["#35b6ff", "#44ff55", "#ff4545", "#ffee44", "#ff55ff", "#b184fd", "#fff", "#ff8800", "#ff55a3"];
   return colors[Math.floor(Math.random()*colors.length)];
 }
 
-function lerp(a,b,t){ return a + (b-a)*t; }
-
-// --- Game state ---
-const canvas = document.getElementById('gameCanvas');
+const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const info = document.getElementById('info');
 let localId = null;
-let localPlayer = null;
-let nickname = '';
+let nickname = "";
+let color = "#fff";
 let players = {};
-let lastSent = 0;
-let attackCooldown = 0;
-let swordAnim = 0;
-let attackEffect = null;
-let dying = false;
-let reviveTimeout = null;
-let damageTexts = [];
+let hits = {};
+let attackAnim = 0; // 0: ko chém, >0: đang vung kiếm
+let attackTime = 0;
+let isDead = false;
+let hp = 100;
+let kills = 0;
+let showDamages = {};
 
-// --- Animation Helper ---
-function drawStickman(x, y, color, facing, anim, showSword, swordSwing, dead, nickname, hp, maxHp) {
-  ctx.save();
-  ctx.translate(x, y);
+function showModal() {
+  document.getElementById('nicknameModal').style.display = 'flex';
+}
+function hideModal() {
+  document.getElementById('nicknameModal').style.display = 'none';
+}
+showModal();
 
-  // Dead effect: rotate body, fade color
-  if(dead) ctx.rotate(Math.PI/2);
+document.getElementById('nicknameBtn').onclick = () => {
+  const val = document.getElementById('nicknameInput').value.trim();
+  if (val.length < 3) { alert('Nickname > 2 ký tự'); return; }
+  nickname = val;
+  color = getRandomColor();
+  hideModal();
+  connectGame();
+}
 
-  // Body
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = color;
-  // Head
-  ctx.beginPath();
-  ctx.arc(0, -30, 20, 0, 2*Math.PI);
-  ctx.stroke();
+document.getElementById('nicknameInput').addEventListener('keyup', e => {
+  if(e.key==='Enter') document.getElementById('nicknameBtn').click();
+});
 
-  // Face
-  if(dead) {
-    // X_X face
-    ctx.font = "14px Arial";
-    ctx.fillStyle = '#fff';
-    ctx.fillText('x x', -14, -28);
-  } else if(anim=='smile') {
-    ctx.beginPath(); ctx.arc(0, -23, 10, Math.PI*0.15, Math.PI*0.85);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth=2; ctx.stroke();
-  } else if(anim=='cry') {
-    ctx.beginPath(); ctx.arc(0, -20, 8, Math.PI*1.2, Math.PI*1.8);
-    ctx.strokeStyle = '#1cf'; ctx.lineWidth=2; ctx.stroke();
-    // Tear drop
-    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(0,0); ctx.strokeStyle="#1cf"; ctx.lineWidth=2; ctx.stroke();
-  }
-
-  // Body
-  ctx.strokeStyle = color; ctx.lineWidth = 5;
-  ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(0,40); ctx.stroke(); // spine
-  // Legs
-  ctx.beginPath(); ctx.moveTo(0,40); ctx.lineTo(-18,80); ctx.moveTo(0,40); ctx.lineTo(18,80); ctx.stroke();
-  // Arms
-  // Animate arm swing for attack
-  ctx.beginPath();
-  if (showSword && swordSwing>0) {
-    // Right arm swings up
-    ctx.moveTo(0,5); ctx.lineTo(lerp(0,38,swordSwing), lerp(0,2-45,swordSwing));
-    // Left arm
-    ctx.moveTo(0,10); ctx.lineTo(-28, 0);  
-  } else {
-    // Neutral pose
-    ctx.moveTo(0,5); ctx.lineTo(30,5); // Right
-    ctx.moveTo(0,10); ctx.lineTo(-28, 0);  // Left
-  }
-  ctx.stroke();
-
-  // Sword
-  if(showSword) {
-    ctx.save();
-    ctx.strokeStyle="#f33"; ctx.lineWidth=7;
-    ctx.translate(lerp(30,38,swordSwing), lerp(5,2-45,swordSwing));
-    ctx.rotate(-Math.PI*0.3*swordSwing);
-    ctx.beginPath();
-    ctx.moveTo(0,0); ctx.lineTo(62,0);
-    ctx.stroke();
-    // Wind effect
-    if(swordSwing>0.75){
-      ctx.globalAlpha = (swordSwing-0.75)*3;
-      ctx.strokeStyle="#fff8";
-      for(let i=0;i<4;i++){
-        ctx.beginPath(); ctx.moveTo(68,0); ctx.lineTo(100+10*i,Math.sin(performance.now()/100+i*2)*8);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
-    ctx.restore();
-  }
-
-  // Blood splat
-  if(anim==="blood") {
-    for(let i=0;i<6;i++){
-      ctx.save();
-      ctx.rotate(Math.PI*i/3 + Math.random()*0.12);
-      ctx.fillStyle="#e11";
-      ctx.globalAlpha=0.7;
-      ctx.beginPath();
-      ctx.ellipse(25,0,6+Math.random()*6,2+Math.random()*2,0,0,2*Math.PI);
-      ctx.fill();
-      ctx.restore();
+// Vị trí
+let x = Math.random()*canvas.width;
+let y = Math.random()*canvas.height;
+let mouse = {x, y};
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+});
+canvas.addEventListener('mousedown', e => {
+  if(isDead) return;
+  attackAnim = 1; attackTime = Date.now();
+  // Khi vung kiếm, kiểm tra va chạm
+  for(const pid in players){
+    if(pid === localId) continue;
+    const p = players[pid];
+    if(!p) continue;
+    if(distance(x,y,p.x,p.y) < 60 && !p.dead && Date.now() - (p.hit||0) > 500){
+      let dmg = 5 + Math.floor(Math.random()*6); // 5-10 dame
+      sendAttack(pid, dmg);
     }
   }
+});
 
-  // HP bar
-  ctx.save();
-  ctx.translate(0, -60);
-  // Nickname
-  ctx.font = "bold 19px Arial";
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = "center";
-  ctx.fillText(nickname, 0, -13);
-  // HP
-  ctx.strokeStyle = "#222"; ctx.lineWidth=9;
-  ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(32,0); ctx.stroke();
-  ctx.strokeStyle = "#0f4"; ctx.lineWidth=7;
-  ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-32+64*Math.max(0,hp/maxHp),0); ctx.stroke();
-  ctx.restore();
-
-  ctx.restore();
+function sendAttack(pid, dmg){
+  db.ref(`players/${pid}/damage`).set({by: localId, value: dmg, time:Date.now()});
 }
 
-function drawDamageText(x, y, text, color) {
-  ctx.save();
-  ctx.font = "bold 22px Arial";
-  ctx.fillStyle = color;
-  ctx.globalAlpha = 0.85;
-  ctx.fillText(text, x, y);
-  ctx.restore();
+function distance(x1,y1,x2,y2){
+  return Math.sqrt((x1-x2)**2 + (y1-y2)**2);
 }
 
-// --- Multiplayer ---
-function connectPlayer(nickname) {
-  localId = 'p_' + Math.random().toString(36).slice(2,8);
-  const color = randomColor();
-  localPlayer = {
-    nickname,
-    color,
-    x: Math.random()*canvas.width*0.8+80,
-    y: Math.random()*canvas.height*0.7+60,
-    hp: 100,
-    maxHp: 100,
-    facing: 1,
-    alive: true,
-    swordAnim: 0,
-    kills: 0,
-    state: 'idle',
-    t: Date.now(),
-  };
-  db.ref('players/'+localId).set(localPlayer);
-  db.ref('players/'+localId).onDisconnect().remove();
-}
+function connectGame(){
+  const playerRef = db.ref('players').push();
+  localId = playerRef.key;
+  // Tạo node bản thân
+  playerRef.set({nickname, color, x, y, health:100, dead:false, kills:0, respawn:0});
+  // Xóa node khi disconnect
+  playerRef.onDisconnect().remove();
 
-function listenPlayers() {
+  // Lắng nghe toàn bộ players
   db.ref('players').on('value', snap => {
-    players = snap.val()||{};
+    players = snap.val() || {};
   });
-}
-
-function updatePlayer(obj) {
-  if(localId) db.ref('players/'+localId).update(obj);
-}
-
-function sendHit(targetId, dmg) {
-  if(!players[targetId]||!players[targetId].alive) return;
-  db.ref('players/'+targetId).transaction(p => {
-    if(!p || !p.alive) return;
-    p.hp -= dmg;
-    if(p.hp <= 0) {
-      p.hp = 0;
-      p.alive = false;
-      p.state = 'cry';
-      p.dieTime = Date.now();
-    }
-    return p;
-  });
-  // Blood effect for local display
-  if(targetId!==localId) {
-    let op = players[targetId];
-    if(op) op.anim = 'blood';
-  }
-}
-
-function tryRevive() {
-  if(!localPlayer) return;
-  if(localPlayer.hp<=0 && !localPlayer.alive) {
-    updatePlayer({ hp:100, alive:true, state:'idle', dieTime:null });
-  }
-}
-
-// --- Game Loop ---
-let mouse={x:canvas.width/2,y:canvas.height/2}, clicked=false;
-canvas.addEventListener('mousemove',e=>{
-  mouse.x = e.offsetX; mouse.y = e.offsetY;
-});
-canvas.addEventListener('mousedown',e=>{
-  clicked=true;
-});
-document.getElementById('joinBtn').onclick = function(){
-  let n = document.getElementById('nicknameInput').value.trim();
-  if(!n) return alert('Nhập nickname trước!');
-  nickname = n.slice(0,16);
-  document.getElementById('nicknameForm').style.display = 'none';
-  connectPlayer(nickname);
-  listenPlayers();
-  gameLoop();
-};
-
-function gameLoop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Draw all players
-  for(const [id, p] of Object.entries(players)){
-    let dead = !p.alive;
-    let anim = (p.state||'idle');
-    let swordSwing = 0;
-    if(p.swordAnim) swordSwing = Math.max(0,Math.min(1,(performance.now()-p.swordAnim)/200));
-    if(p.hp<=0 && p.dieTime && Date.now()-p.dieTime>29500 && id===localId) {
-      // 30s passed, revive
-      tryRevive();
-    }
-    drawStickman(p.x, p.y, p.color, p.facing, anim, true, swordSwing, dead, p.nickname||id, p.hp||0, p.maxHp||100);
-  }
-  // Damage texts
-  for(let i=damageTexts.length-1; i>=0; i--){
-    let t = damageTexts[i];
-    t.y -= 1.5;
-    t.life -= 1;
-    drawDamageText(t.x, t.y, t.text, t.color);
-    if(t.life<=0) damageTexts.splice(i,1);
-  }
-  // My info
-  if(localPlayer){
-    ctx.save();
-    ctx.font = '22px Arial'; ctx.fillStyle='#fff';
-    ctx.fillText(`HP: ${localPlayer.hp||0} | Kills: ${localPlayer.kills||0}`, 10, 26);
-    ctx.restore();
-  }
-  requestAnimationFrame(gameLoop);
-}
-
-setInterval(()=>{
-  if(!localPlayer||!localId) return;
-  // Movement towards mouse
-  if(localPlayer.alive){
-    localPlayer.x = lerp(localPlayer.x, mouse.x, 0.17);
-    localPlayer.y = lerp(localPlayer.y, mouse.y, 0.17);
-    updatePlayer({ x: localPlayer.x, y: localPlayer.y, facing: mouse.x>localPlayer.x?1:-1 });
-  }
-}, 45);
-
-setInterval(()=>{
-  if(!localPlayer||!localId) return;
-  // Revive after 30s if dead
-  if(localPlayer.hp<=0 && !localPlayer.alive && localPlayer.dieTime && Date.now()-localPlayer.dieTime>29500){
-    tryRevive();
-  }
-}, 4000);
-
-// Attack logic
-canvas.addEventListener('mouseup', function(){
-  if(!localPlayer || !localPlayer.alive) return;
-  if(Date.now()-attackCooldown<470) return;
-  attackCooldown = Date.now();
-  localPlayer.swordAnim = performance.now();
-  updatePlayer({ swordAnim: localPlayer.swordAnim, state: 'smile' });
-  setTimeout(()=>updatePlayer({ state: 'idle' }),500);
-  // Detect hits
-  for(const [id,p] of Object.entries(players)){
-    if(id===localId||!p.alive) continue;
-    // Hit test: if their head is near sword
-    let dx = p.x - localPlayer.x;
-    let dy = p.y - localPlayer.y;
-    let dist = Math.sqrt(dx*dx+dy*dy);
-    if(dist<70){
-      // Headshot
-      sendHit(id, 10);
-      damageTexts.push({ x:p.x, y:p.y-64, text:"-10hp", color:'#ff0', life:36 });
-      // Tăng kills nếu chết
-      if((p.hp||100)-10<=0){
-        localPlayer.kills = (localPlayer.kills||0)+1;
-        updatePlayer({ kills: localPlayer.kills });
+  // Lắng nghe bị đánh
+  db.ref(`players/${localId}/damage`).on('value', snap => {
+    const data = snap.val();
+    if(data && data.value){
+      hp -= data.value;
+      showDamages[localId] = {time: Date.now(), val: -data.value};
+      db.ref(`players/${localId}/damage`).remove();
+      db.ref(`players/${localId}`).update({health: hp});
+      if(hp<=0){
+        db.ref(`players/${localId}`).update({dead:true, respawn: Date.now()+30000});
+        isDead = true;
+        setTimeout(()=>{
+          hp=100; isDead=false;
+          x=Math.random()*canvas.width;
+          y=Math.random()*canvas.height;
+          db.ref(`players/${localId}`).update({health:100, dead:false, x, y, respawn:0});
+        }, 30000);
       }
-    }else if(dist<120){
-      // Body shot
-      sendHit(id, 5);
-      damageTexts.push({ x:p.x, y:p.y-64, text:"-5hp", color:'#fa0', life:30 });
     }
-  }
-});
+  });
+  // Lắng nghe khi bị giết để cộng kills cho người khác
+  db.ref(`players`).on('child_changed', snap => {
+    const d = snap.val();
+    if(d.dead && d.respawn > Date.now() && d.killer){
+      if(localId === d.killer){
+        kills++;
+        db.ref(`players/${localId}`).update({kills});
+      }
+    }
+  });
+  setInterval(()=>{
+    if(localId){
+      // Di chuyển
+      if(!isDead){
+        x += (mouse.x - x) * 0.15;
+        y += (mouse.y - y) * 0.15;
+      }
+      db.ref(`players/${localId}`).update({x, y, health:hp, kills, dead:isDead});
+    }
+  }, 50);
+  renderLoop();
+}
 
-// Add blood anim locally
-setInterval(()=>{
-  for(const [id,p] of Object.entries(players)){
-    if(p.anim=='blood'){ p.anim='idle'; updatePlayer({ state:'idle' }); }
+function renderStickman(x, y, c, dead, nickname, health, showDmg){
+  ctx.save();
+  ctx.strokeStyle = c; ctx.lineWidth=4;
+  ctx.translate(x, y);
+  if(dead){
+    ctx.rotate(Math.PI/2);
   }
-},400);
+  // nickname
+  ctx.font='bold 18px Arial';
+  ctx.fillStyle='#fff';
+  ctx.textAlign='center';
+  ctx.fillText(nickname,0,-65);
+  // thanh máu
+  ctx.fillStyle='lime';
+  ctx.fillRect(-24,-54, Math.max(0,health/100*48),5);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1;
+  ctx.strokeRect(-24,-54,48,5);
+  // hiệu ứng số máu
+  if(showDmg && Date.now() - showDmg.time < 800){
+    ctx.fillStyle = '#ff0';
+    ctx.globalAlpha = 1-(Date.now()-showDmg.time)/800;
+    ctx.fillText(`${showDmg.val>0?'+':''}${showDmg.val}hp`,0,-77);
+    ctx.globalAlpha=1;
+  }
+  // Thân
+  ctx.strokeStyle = c; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(0,10); ctx.stroke();
+  // Chân
+  ctx.beginPath(); ctx.moveTo(0,10); ctx.lineTo(-12,36); ctx.moveTo(0,10); ctx.lineTo(12,36); ctx.stroke();
+  // Tay
+  ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(-16,8); ctx.moveTo(0,-12); ctx.lineTo(16,8); ctx.stroke();
+  // Đầu
+  ctx.beginPath(); ctx.arc(0,-38,12,0,2*Math.PI); ctx.stroke();
+  // Kiếm
+  ctx.strokeStyle = '#f22'; ctx.lineWidth=7;
+  ctx.beginPath(); ctx.moveTo(16,8); ctx.lineTo(85,8); ctx.stroke();
+  ctx.restore();
+}
 
-  </script>
+function renderLoop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  info.textContent = `HP: ${hp} | Kills: ${kills}`;
+  for(const pid in players){
+    const p = players[pid];
+    if(!p) continue;
+    renderStickman(p.x, p.y, p.color||'#fff', p.dead, p.nickname, p.health||100, showDamages[pid]);
+  }
+  // Chém hiệu ứng
+  if(attackAnim>0){
+    let a = Math.min(1,(Date.now()-attackTime)/160);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = '#ff0'; ctx.lineWidth=5;
+    ctx.globalAlpha = 1-a;
+    ctx.beginPath(); ctx.moveTo(35,12); ctx.lineTo(130,-60+120*a); // hiệu ứng gió
+    ctx.stroke();
+    ctx.restore();
+    if(a>=1) attackAnim=0;
+  }
+  requestAnimationFrame(renderLoop);
+}
+</script>
 </body>
 </html>
