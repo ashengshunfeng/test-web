@@ -20,7 +20,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    // === Đúng firebaseConfig của bạn ===
+    // Đúng firebaseConfig của bạn
     const firebaseConfig = {
       apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
       authDomain: "test-game-8a541.firebaseapp.com",
@@ -49,6 +49,16 @@
     let moveTo = {x:myState.x, y:myState.y};
     let frame = 0;
 
+    // Giao tiếp các tab: Khi có tab mới mở, tab cũ xóa bản thân để chỉ còn 1 stickman/1 trình duyệt
+    window.addEventListener('storage', (e) => {
+      if(e.key === 'stickman-tab') {
+        if(e.newValue !== myId) {
+          db.ref('players/' + myId).remove();
+        }
+      }
+    });
+    localStorage.setItem('stickman-tab', myId);
+
     // Nhập nickname
     function setNickname() {
       let name = document.getElementById('nicknameInput').value.trim();
@@ -62,7 +72,7 @@
     function startGame() {
       myColor = COLORS[Math.floor(Math.random()*COLORS.length)];
       db.ref('players/'+myId).set({
-        x: myState.x, y: myState.y, hp: 100, nickname: myNickname, color: myColor, dead: false, ts: Date.now(), action: "idle", emote: "" 
+        x: myState.x, y: myState.y, hp: 100, nickname: myNickname, color: myColor, dead: false, ts: Date.now(), action: "idle", emote: ""
       });
       db.ref('players/'+myId).onDisconnect().remove();
       db.ref('players').on('value', snap => {
@@ -83,7 +93,7 @@
       db.ref('players/'+myId).remove();
     });
 
-    // Di chuyển theo chuột
+    // Di chuyển theo chuột (tăng tốc độ)
     const canvas = document.getElementById('game');
     canvas.addEventListener('mousemove',e=>{
       const rect = canvas.getBoundingClientRect();
@@ -120,13 +130,13 @@
     // Game loop
     function loop() {
       frame++;
-      // Move
+      // Move (tăng tốc độ)
       if(!myState.dead) {
         let dx = moveTo.x-myState.x, dy = moveTo.y-myState.y;
         let d = Math.sqrt(dx*dx+dy*dy);
         if(d>1) {
-          myState.x += dx/10;
-          myState.y += dy/10;
+          myState.x += dx/4; // tăng tốc lên
+          myState.y += dy/4;
         }
       }
       // Revive
