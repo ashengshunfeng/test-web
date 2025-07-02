@@ -7,7 +7,7 @@
   <style>
     body, html { margin:0; padding:0; overflow:hidden; background:#222; font-family:sans-serif; }
     #authContainer { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#333; padding:20px; border-radius:8px; color:#fff; z-index:2; }
-    #authContainer input, #authContainer button { display:block; width:200px; margin:10px auto; padding:8px; border:none; border-radius:4px; font-size:16px; }
+    #authContainer input, #authContainer button { display:block; width:220px; margin:10px auto; padding:8px; border:none; border-radius:4px; font-size:16px; }
     #hud { position:absolute; top:10px; left:10px; color:#fff; z-index:1; }
     #message { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:24px; z-index:1; }
     canvas { display:block; width:100vw; height:100vh; }
@@ -15,146 +15,145 @@
 </head>
 <body>
   <div id="authContainer">
-    <h3>Đăng nhập / Đăng ký</h3>
-    <input id="emailInput" type="email" placeholder="Email" />
-    <input id="passwordInput" type="password" placeholder="Mật khẩu" />
-    <button id="loginBtn">Đăng nhập</button>
-    <button id="registerBtn">Đăng ký</button>
+    <h3>Đăng ký / Đăng nhập</h3>
+    <input id="email" type="email" placeholder="Email" />
+    <input id="pass" type="password" placeholder="Mật khẩu" />
+    <button id="btnRegister">Đăng ký</button>
+    <button id="btnLogin">Đăng nhập</button>
   </div>
-
-  <div id="hud" style="display:none;">HP: <span id="hpVal">--</span> | Kills: <span id="killCount">0</span></div>
+  <div id="hud" style="display:none;">HP: <span id="hp">--</span> | Kills: <span id="kills">0</span></div>
   <div id="message">Đang kết nối...</div>
-  <canvas id="gameCanvas"></canvas>
+  <canvas id="canvas"></canvas>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script>
-    // Firebase config (theo dữ liệu bạn cung cấp)
-    const firebaseConfig = {
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
+    import { getDatabase, ref, set, update, onValue, runTransaction, remove } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+
+    // Firebase config (theo bạn cung cấp)
+    const config = {
       apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
       authDomain: "test-game-8a541.firebaseapp.com",
-      databaseURL: "https://test-game-8a541-default-rtdb.firebaseio.com",
+      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "test-game-8a541",
       storageBucket: "test-game-8a541.firebasestorage.app",
       messagingSenderId: "396403313237",
       appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
     };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+    const app = initializeApp(config);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
     // DOM
-    const authContainer = document.getElementById('authContainer');
-    const emailInput = document.getElementById('emailInput');
-    const passwordInput = document.getElementById('passwordInput');
-    const loginBtn = document.getElementById('loginBtn');
-    const registerBtn = document.getElementById('registerBtn');
+    const authC = document.getElementById('authContainer');
+    const emailI = document.getElementById('email');
+    const passI = document.getElementById('pass');
+    const regB = document.getElementById('btnRegister');
+    const logB = document.getElementById('btnLogin');
     const hud = document.getElementById('hud');
-    const hpVal = document.getElementById('hpVal');
-    const killCountEl = document.getElementById('killCount');
-    const message = document.getElementById('message');
-    const canvas = document.getElementById('gameCanvas');
+    const hpEl = document.getElementById('hp');
+    const killsEl = document.getElementById('kills');
+    const msg = document.getElementById('message');
+    const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
     window.addEventListener('resize', resize); resize();
 
-    let localId, killCount = 0;
-    let players = {}, floats = [];
+    let uid;
+    let players = {};
+    let floats = [];
 
-    // Auth handlers
-    registerBtn.onclick = () => {
-      auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value)
-        .catch(e => alert(e.message));
+    regB.onclick = () => {
+      createUserWithEmailAndPassword(auth, emailI.value, passI.value)
+        .catch(e=>alert(e.message));
     };
-    loginBtn.onclick = () => {
-      auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value)
-        .catch(e => alert(e.message));
+    logB.onclick = () => {
+      signInWithEmailAndPassword(auth, emailI.value, passI.value)
+        .catch(e=>alert(e.message));
     };
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        localId = user.uid;
-        db.ref(`users/${localId}/kills`).once('value').then(s => {
-          if (s.val() === null) db.ref(`users/${localId}`).set({ email: user.email, kills: 0 });
-        });
-        authContainer.style.display = 'none';
+    onAuthStateChanged(auth, user => {
+      if(user){
+        uid = user.uid;
+        // init user kills if not exist
+        const uRef = ref(db, `users/${uid}`);
+        runTransaction(ref(db, `users/${uid}/kills`), k=> k||0);
+
+        authC.style.display = 'none';
         hud.style.display = 'block';
         startGame();
       } else {
-        authContainer.style.display = 'block';
+        authC.style.display = 'flex';
         hud.style.display = 'none';
       }
     });
 
-    function startGame() {
-      showMessage('Đang kết nối...');
-      db.ref(`game/players/${localId}`).set({ x: canvas.width/2, y: canvas.height/2, health: 100 });
-      db.ref('game/players').on('value', snap => {
-        const data = snap.val() || {};
-        players = {};
-        Object.entries(data).forEach(([id, info]) => players[id] = { ...info, id });
-        hideMessage();
+    function startGame(){
+      msg.textContent = 'Đang kết nối...';
+      // spawn
+      set(ref(db, `game/players/${uid}`), { x:canvas.width/2, y:canvas.height/2, health:100 });
+      // listen players
+      onValue(ref(db, 'game/players'), snap=>{
+        players = snap.val()||{};
+        msg.style.display = 'none';
       });
-      db.ref(`users/${localId}/kills`).on('value', s => {
-        killCount = s.val() || 0;
-        killCountEl.textContent = killCount;
+      // listen kills
+      onValue(ref(db, `users/${uid}/kills`), snap=>{
+        killsEl.textContent = snap.val();
       });
-      render();
+      loop();
     }
 
-    function showMessage(txt){ message.textContent = txt; message.style.display = 'block'; }
-    function hideMessage(){ message.style.display = 'none'; }
-
-    window.addEventListener('mousemove', e => {
-      if (!players[localId] || players[localId].health <= 0) return;
-      db.ref(`game/players/${localId}`).update({ x: e.clientX, y: e.clientY });
+    window.addEventListener('mousemove', e=>{
+      if(!players[uid]||players[uid].health<=0) return;
+      update(ref(db, `game/players/${uid}`), { x:e.clientX, y:e.clientY });
     });
-    window.addEventListener('click', e => {
-      Object.values(players).forEach(p => {
-        if (p.id === localId || p.health <= 0) return;
-        const d = Math.hypot(e.clientX - p.x, e.clientY - p.y);
-        if (d < 30) {
-          const dmg = d < 15 ? 10 : 5;
-          const newHp = Math.max(0, p.health - dmg);
-          db.ref(`game/players/${p.id}/health`).set(newHp);
-          floats.push({ x: p.x, y: p.y - 25, text: '-' + dmg + 'hp', life: 60 });
-          if (newHp === 0) {
-            db.ref(`users/${localId}/kills`).transaction(k => (k || 0) + 1);
-            setTimeout(() => db.ref(`game/players/${p.id}/health`).set(100), 30000);
+
+    window.addEventListener('click', e=>{
+      Object.entries(players).forEach(([id,p])=>{
+        if(id===uid||p.health<=0) return;
+        const d = Math.hypot(e.clientX-p.x, e.clientY-p.y);
+        if(d<30){
+          const dmg = d<15?10:5;
+          update(ref(db, `game/players/${id}`), { health: Math.max(0, p.health-dmg) });
+          floats.push({ x:p.x, y:p.y-25, text:'-'+dmg+'hp', life:60 });
+          if(p.health<=dmg){
+            runTransaction(ref(db, `users/${uid}/kills`), k=> (k||0)+1);
+            setTimeout(()=> update(ref(db, `game/players/${id}`), { health: 100 }), 30000);
           }
         }
       });
     });
 
-    function render() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      Object.values(players).forEach(p => {
-        ctx.fillStyle = '#444'; ctx.fillRect(p.x-20, p.y-40, 40, 6);
-        ctx.fillStyle = '#0f0'; ctx.fillRect(p.x-20, p.y-40, (p.health/100)*40, 6);
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(p.x, p.y-20, 10, 0, 2*Math.PI); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x, p.y-10); ctx.lineTo(p.x, p.y+20); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x-15, p.y); ctx.lineTo(p.x+15, p.y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x, p.y+20); ctx.lineTo(p.x-10, p.y+35); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x, p.y+20); ctx.lineTo(p.x+10, p.y+35); ctx.stroke();
+    function loop(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      Object.entries(players).forEach(([id,p])=>{
+        // health bar
+        ctx.fillStyle='#444'; ctx.fillRect(p.x-20,p.y-40,40,6);
+        ctx.fillStyle='#0f0'; ctx.fillRect(p.x-20,p.y-40,(p.health/100)*40,6);
+        // stickman
+        ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(p.x,p.y-20,10,0,2*Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x,p.y-10); ctx.lineTo(p.x,p.y+20); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x-15,p.y); ctx.lineTo(p.x+15,p.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x,p.y+20); ctx.lineTo(p.x-10,p.y+35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x,p.y+20); ctx.lineTo(p.x+10,p.y+35); ctx.stroke();
       });
-      floats = floats.filter(f => f.life > 0);
-      floats.forEach(f => {
-        ctx.globalAlpha = f.life / 60;
-        ctx.fillStyle = '#ff0'; ctx.font = '16px sans-serif'; ctx.fillText(f.text, f.x, f.y);
+      floats = floats.filter(f=>f.life>0);
+      floats.forEach(f=>{
+        ctx.globalAlpha = f.life/60;
+        ctx.fillStyle='#ff0'; ctx.font='16px sans-serif'; ctx.fillText(f.text,f.x,f.y);
         f.y -= 0.5; f.life--;
         ctx.globalAlpha = 1;
       });
-      const me = players[localId] || {};
-      document.getElementById('hpVal').textContent = me.health || 0;
-      requestAnimationFrame(render);
+      const me = players[uid]||{};
+      hp.textContent = me.health||0;
+      requestAnimationFrame(loop);
     }
 
-    window.addEventListener('beforeunload', () => {
-      if (localId) db.ref(`game/players/${localId}`).remove();
+    window.addEventListener('beforeunload', ()=>{
+      if(uid) remove(ref(db, `game/players/${uid}`));
     });
   </script>
 </body>
