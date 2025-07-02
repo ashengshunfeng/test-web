@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Stickman Multiplayer Game</title>
+  <title>Stickman Multiplayer Game (FINAL)</title>
   <style>
     body { margin: 0; overflow: hidden; background: #222; }
     #nicknameModal {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.8); z-index: 10; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); z-index: 10; display: flex; align-items: center; justify-content: center;
     }
     #nicknameBox {
       background: #fff; padding: 32px; border-radius: 16px; text-align: center;
@@ -46,7 +46,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Stickman màu ngẫu nhiên mỗi người
+// Màu stickman ngẫu nhiên mỗi người
 function getRandomColor() {
   const colors = ["#35b6ff", "#44ff55", "#ff4545", "#ffee44", "#ff55ff", "#b184fd", "#fff", "#ff8800", "#ff55a3"];
   return colors[Math.floor(Math.random()*colors.length)];
@@ -59,13 +59,13 @@ let localId = null;
 let nickname = "";
 let color = "#fff";
 let players = {};
-let hits = {};
-let attackAnim = 0; // 0: ko chém, >0: đang vung kiếm
+let attackAnim = 0;
 let attackTime = 0;
 let isDead = false;
 let hp = 100;
 let kills = 0;
 let showDamages = {};
+let lastAttack = 0;
 
 function showModal() {
   document.getElementById('nicknameModal').style.display = 'flex';
@@ -99,13 +99,16 @@ canvas.addEventListener('mousemove', e => {
 });
 canvas.addEventListener('mousedown', e => {
   if(isDead) return;
+  if(Date.now() - lastAttack < 350) return;
+  lastAttack = Date.now();
   attackAnim = 1; attackTime = Date.now();
   // Khi vung kiếm, kiểm tra va chạm
   for(const pid in players){
     if(pid === localId) continue;
     const p = players[pid];
     if(!p) continue;
-    if(distance(x,y,p.x,p.y) < 60 && !p.dead && Date.now() - (p.hit||0) > 500){
+    if(p.dead) continue;
+    if(distance(x,y,p.x,p.y) < 60 && Date.now() - (p.hit||0) > 500){
       let dmg = 5 + Math.floor(Math.random()*6); // 5-10 dame
       sendAttack(pid, dmg);
     }
@@ -123,16 +126,12 @@ function distance(x1,y1,x2,y2){
 function connectGame(){
   const playerRef = db.ref('players').push();
   localId = playerRef.key;
-  // Tạo node bản thân
   playerRef.set({nickname, color, x, y, health:100, dead:false, kills:0, respawn:0});
-  // Xóa node khi disconnect
   playerRef.onDisconnect().remove();
 
-  // Lắng nghe toàn bộ players
   db.ref('players').on('value', snap => {
     players = snap.val() || {};
   });
-  // Lắng nghe bị đánh
   db.ref(`players/${localId}/damage`).on('value', snap => {
     const data = snap.val();
     if(data && data.value){
@@ -152,7 +151,6 @@ function connectGame(){
       }
     }
   });
-  // Lắng nghe khi bị giết để cộng kills cho người khác
   db.ref(`players`).on('child_changed', snap => {
     const d = snap.val();
     if(d.dead && d.respawn > Date.now() && d.killer){
@@ -164,40 +162,45 @@ function connectGame(){
   });
   setInterval(()=>{
     if(localId){
-      // Di chuyển
       if(!isDead){
-        x += (mouse.x - x) * 0.15;
-        y += (mouse.y - y) * 0.15;
+        x += (mouse.x - x) * 0.13;
+        y += (mouse.y - y) * 0.13;
       }
       db.ref(`players/${localId}`).update({x, y, health:hp, kills, dead:isDead});
     }
-  }, 50);
+  }, 55);
   renderLoop();
 }
 
-function renderStickman(x, y, c, dead, nickname, health, showDmg){
+function renderStickman(x, y, c, dead, nickname, health, showDmg, respawn) {
   ctx.save();
   ctx.strokeStyle = c; ctx.lineWidth=4;
   ctx.translate(x, y);
   if(dead){
     ctx.rotate(Math.PI/2);
   }
-  // nickname
-  ctx.font='bold 18px Arial';
+  // Nickname
+  ctx.font='bold 19px Arial';
   ctx.fillStyle='#fff';
   ctx.textAlign='center';
-  ctx.fillText(nickname,0,-65);
-  // thanh máu
+  ctx.fillText(nickname,0,-72);
+  // Thanh máu
   ctx.fillStyle='lime';
-  ctx.fillRect(-24,-54, Math.max(0,health/100*48),5);
+  ctx.fillRect(-24,-59, Math.max(0,health/100*48),5);
   ctx.strokeStyle='#fff'; ctx.lineWidth=1;
-  ctx.strokeRect(-24,-54,48,5);
-  // hiệu ứng số máu
-  if(showDmg && Date.now() - showDmg.time < 800){
+  ctx.strokeRect(-24,-59,48,5);
+  // HP text
+  ctx.font='14px Arial';
+  ctx.fillStyle='#fff';
+  ctx.fillText(health+"/100",0,-63);
+  // Hiệu ứng số máu
+  if(showDmg && Date.now() - showDmg.time < 1100){
+    ctx.save();
+    ctx.font = 'bold 21px Arial';
     ctx.fillStyle = '#ff0';
-    ctx.globalAlpha = 1-(Date.now()-showDmg.time)/800;
-    ctx.fillText(`${showDmg.val>0?'+':''}${showDmg.val}hp`,0,-77);
-    ctx.globalAlpha=1;
+    ctx.globalAlpha = 1-(Date.now()-showDmg.time)/1100;
+    ctx.fillText(`${showDmg.val>0?'+':''}${showDmg.val}hp`,0,-95);
+    ctx.restore();
   }
   // Thân
   ctx.strokeStyle = c; ctx.lineWidth=4;
@@ -208,9 +211,31 @@ function renderStickman(x, y, c, dead, nickname, health, showDmg){
   ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(-16,8); ctx.moveTo(0,-12); ctx.lineTo(16,8); ctx.stroke();
   // Đầu
   ctx.beginPath(); ctx.arc(0,-38,12,0,2*Math.PI); ctx.stroke();
-  // Kiếm
-  ctx.strokeStyle = '#f22'; ctx.lineWidth=7;
-  ctx.beginPath(); ctx.moveTo(16,8); ctx.lineTo(85,8); ctx.stroke();
+  // Vũ khí: Kiếm dài, có thể chém
+  ctx.save();
+  ctx.strokeStyle = '#f22'; ctx.lineWidth=8;
+  if(!dead && attackAnim>0 && !respawn){
+    let a = Math.min(1,(Date.now()-attackTime)/140);
+    ctx.rotate(-a*0.9);
+    ctx.beginPath(); ctx.moveTo(16,8); ctx.lineTo(108,8); ctx.stroke();
+    // Gió chém
+    if(a>0.4) {
+      ctx.globalAlpha=0.3+0.6*(a-0.4);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=4;
+      ctx.beginPath(); ctx.moveTo(105,8); ctx.lineTo(160,6+Math.sin(a*12)*6); ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+  } else {
+    ctx.beginPath(); ctx.moveTo(16,8); ctx.lineTo(90,8); ctx.stroke();
+  }
+  ctx.restore();
+  // Animation chết: nằm sấp và đếm thời gian hồi sinh
+  if(dead && respawn){
+    ctx.font='16px Arial';
+    ctx.fillStyle='#ff8080';
+    let secs = Math.max(0, Math.floor((respawn-Date.now())/1000));
+    ctx.fillText("Hồi sinh sau: "+secs+"s",0,44);
+  }
   ctx.restore();
 }
 
@@ -220,16 +245,16 @@ function renderLoop(){
   for(const pid in players){
     const p = players[pid];
     if(!p) continue;
-    renderStickman(p.x, p.y, p.color||'#fff', p.dead, p.nickname, p.health||100, showDamages[pid]);
+    renderStickman(p.x, p.y, p.color||'#fff', p.dead, p.nickname, p.health||100, showDamages[pid], p.respawn);
   }
   // Chém hiệu ứng
   if(attackAnim>0){
-    let a = Math.min(1,(Date.now()-attackTime)/160);
+    let a = Math.min(1,(Date.now()-attackTime)/140);
     ctx.save();
     ctx.translate(x, y);
-    ctx.strokeStyle = '#ff0'; ctx.lineWidth=5;
+    ctx.strokeStyle = '#ff0'; ctx.lineWidth=7;
     ctx.globalAlpha = 1-a;
-    ctx.beginPath(); ctx.moveTo(35,12); ctx.lineTo(130,-60+120*a); // hiệu ứng gió
+    ctx.beginPath(); ctx.moveTo(35,12); ctx.lineTo(170,-60+120*a); // hiệu ứng gió
     ctx.stroke();
     ctx.restore();
     if(a>=1) attackAnim=0;
