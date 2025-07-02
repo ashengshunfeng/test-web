@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Stickman Game</title>
+  <title>Stickman Game Animated</title>
   <style>
     html, body { margin:0; padding:0; background:#222; height:100%; }
     canvas { display:block; margin:0 auto; background:#222; }
@@ -45,7 +45,9 @@
     let lastAttack = 0;
     let swordAngle = 0;
     let swordSwing = 0;
+    let swordAnim = 0;
     let moveTo = {x:myState.x, y:myState.y};
+    let frame = 0;
 
     // Nhập nickname
     function setNickname() {
@@ -60,7 +62,7 @@
     function startGame() {
       myColor = COLORS[Math.floor(Math.random()*COLORS.length)];
       db.ref('players/'+myId).set({
-        x: myState.x, y: myState.y, hp: 100, nickname: myNickname, color: myColor, dead: false, ts: Date.now()
+        x: myState.x, y: myState.y, hp: 100, nickname: myNickname, color: myColor, dead: false, ts: Date.now(), action: "idle", emote: "" 
       });
       db.ref('players/'+myId).onDisconnect().remove();
       db.ref('players').on('value', snap => {
@@ -71,7 +73,7 @@
       // Sync trạng thái bản thân
       setInterval(()=>{
         db.ref('players/'+myId).update({
-          x: myState.x, y: myState.y, hp: myState.hp, nickname: myNickname, color: myColor, dead: myState.dead, ts: Date.now()
+          x: myState.x, y: myState.y, hp: myState.hp, nickname: myNickname, color: myColor, dead: myState.dead, ts: Date.now(), action: isAttacking?"attack":myState.dead?"dead":"idle", emote: myState.emote||""
         });
       }, 100);
     }
@@ -92,6 +94,7 @@
     canvas.addEventListener('mousedown',()=>{
       if(myState.dead||Date.now()-lastAttack<500) return;
       isAttacking = true; swordSwing = Math.PI/2; lastAttack = Date.now();
+      myState.emote = "";
       setTimeout(()=>isAttacking=false,300);
       // Kiểm tra trúng ai
       Object.entries(others).forEach(([oid,pl])=>{
@@ -104,7 +107,11 @@
           let hitZone = Math.abs(angle-swordAngle) < Math.PI/3;
           if(hitZone) {
             db.ref('players/'+oid+'/hp').transaction(hp => (hp||100)-10);
-            if((pl.hp||100)<=10) db.ref('players/'+oid).update({dead:true});
+            if((pl.hp||100)<=10) {
+              db.ref('players/'+oid).update({dead:true, emote: "cry"});
+              myState.emote = "laugh";
+              setTimeout(()=>{ myState.emote = "" },1200);
+            }
           }
         }
       });
@@ -112,6 +119,7 @@
 
     // Game loop
     function loop() {
+      frame++;
       // Move
       if(!myState.dead) {
         let dx = moveTo.x-myState.x, dy = moveTo.y-myState.y;
@@ -124,49 +132,67 @@
       // Revive
       if(myState.dead) {
         setTimeout(()=>{
-          myState.hp = 100; myState.dead=false;
+          myState.hp = 100; myState.dead=false; myState.emote="";
         },30000);
       }
       // Draw
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      drawPlayer(ctx, myState, myNickname, myColor, true);
-      Object.values(others).forEach(pl=>drawPlayer(ctx,pl,pl.nickname,pl.color));
+      drawPlayer(ctx, myState, myNickname, myColor, true, isAttacking, swordSwing, myState.emote);
+      Object.values(others).forEach(pl=>drawPlayer(ctx,pl,pl.nickname,pl.color,false,pl.action=="attack",pl.swordSwing||0, pl.emote));
       requestAnimationFrame(loop);
     }
 
-    function drawPlayer(ctx,pl,nickname,color,me) {
+    function drawPlayer(ctx,pl,nickname,color,me,attacking,swordSwing,emote) {
       // Thanh máu
       ctx.save();
       ctx.strokeStyle="#000"; ctx.lineWidth=6;
-      ctx.beginPath(); ctx.moveTo(pl.x-24,pl.y-32);ctx.lineTo(pl.x+24,pl.y-32);ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pl.x-24,pl.y-42);ctx.lineTo(pl.x+24,pl.y-42);ctx.stroke();
       ctx.strokeStyle="#0f0"; ctx.lineWidth=4;
-      ctx.beginPath(); ctx.moveTo(pl.x-24,pl.y-32);ctx.lineTo(pl.x-24+48*Math.max(0,pl.hp||100)/100,pl.y-32);ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pl.x-24,pl.y-42);ctx.lineTo(pl.x-24+48*Math.max(0,pl.hp||100)/100,pl.y-42);ctx.stroke();
       ctx.restore();
       // Nickname
-      ctx.font = "18px Arial"; ctx.textAlign="center"; ctx.fillStyle = color||"#fff";
-      ctx.fillText(nickname||"Player", pl.x, pl.y-40);
-      // Stickman
+      ctx.font = "bold 20px Arial"; ctx.textAlign="center"; ctx.fillStyle = color||"#fff";
+      ctx.fillText(nickname||"Player", pl.x, pl.y-54);
+      // Emote
+      if(emote=="cry") {
+        ctx.font="18px Arial";ctx.fillStyle="#09f";ctx.fillText("😭",pl.x,pl.y-60);
+      } else if(emote=="laugh") {
+        ctx.font="18px Arial";ctx.fillStyle="#fa0";ctx.fillText("😆",pl.x,pl.y-60);
+      }
+      // Stickman động: vung tay, lấy đà, nằm xuống khi chết
+      let anim = frame%60/60;
       ctx.strokeStyle = color||"#fff"; ctx.lineWidth=4;
-      ctx.beginPath();
-      // Head
-      ctx.arc(pl.x,pl.y-15,15,0,2*Math.PI);
-      // Body
-      ctx.moveTo(pl.x,pl.y); ctx.lineTo(pl.x,pl.y+40);
-      // Arms
-      ctx.moveTo(pl.x-18,pl.y+10); ctx.lineTo(pl.x+18,pl.y+10);
-      // Legs
-      ctx.moveTo(pl.x,pl.y+40); ctx.lineTo(pl.x-14,pl.y+70);
-      ctx.moveTo(pl.x,pl.y+40); ctx.lineTo(pl.x+14,pl.y+70);
-      ctx.stroke();
-      // Sword
       ctx.save();
-      ctx.strokeStyle = "#f44"; ctx.lineWidth=6;
-      let angle = isAttacking&&me ? Math.PI/4-Math.abs(swordSwing) : Math.PI/4;
-      if(isAttacking&&me) swordSwing-=0.2;
-      let sx = pl.x+18*Math.cos(angle), sy = pl.y+10+18*Math.sin(angle);
-      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+50*Math.cos(angle),sy+50*Math.sin(angle));
-      ctx.stroke();
+      ctx.translate(pl.x,pl.y);
+      // Nằm xuống khi chết
+      if(pl.dead) ctx.rotate(Math.PI/2);
+      // Head
+      ctx.beginPath(); ctx.arc(0,-15,15,0,2*Math.PI); ctx.stroke();
+      // Body
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+      // Arms (animation vung)
+      ctx.beginPath();
+      let armA = pl.dead?0:Math.sin(anim*Math.PI*2)*8;
+      let armB = pl.dead?0:-Math.sin(anim*Math.PI*2)*8;
+      ctx.moveTo(-18,10+armA); ctx.lineTo(18,10+armB); ctx.stroke();
+      // Legs
+      ctx.beginPath(); ctx.moveTo(0,40); ctx.lineTo(-14,70); ctx.moveTo(0,40); ctx.lineTo(14,70); ctx.stroke();
+      // Sword (dài hơn, hiệu ứng chém)
+      ctx.save();
+      ctx.strokeStyle = "#f44"; ctx.lineWidth=7;
+      let angle = attacking ? Math.PI/4-Math.abs(swordSwing) : Math.PI/4-(Math.sin(anim*Math.PI*2)*0.15);
+      let sx = 18*Math.cos(angle), sy = 10+18*Math.sin(angle);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+80*Math.cos(angle),sy+80*Math.sin(angle)); ctx.stroke();
+      // Hiệu ứng gió khi chém
+      if(attacking&&me) for(let i=0;i<4;i++) {
+        ctx.beginPath();
+        ctx.strokeStyle="#fff5";
+        ctx.moveTo(sx+50*Math.cos(angle)+Math.random()*10,sy+50*Math.sin(angle)+Math.random()*10);
+        ctx.lineTo(sx+90*Math.cos(angle)+Math.random()*10,sy+90*Math.sin(angle)+Math.random()*10);
+        ctx.stroke();
+      }
+      ctx.restore();
       ctx.restore();
     }
 
