@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Stickman Ultra Minimal</title>
+  <title>Stickman Multiplayer Animated Minimal</title>
   <style>body { margin:0; overflow:hidden; background:#222; }</style>
 </head>
 <body>
-<canvas id="game" width="800" height="500"></canvas>
+<canvas id="game" width="900" height="550"></canvas>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script>
-// Firebase config đúng của bạn
 const firebaseConfig = {
   apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
   authDomain: "test-game-8a541.firebaseapp.com",
@@ -26,7 +25,6 @@ const db = firebase.database();
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-
 let players = {};
 let localId = null;
 let x = Math.random()*canvas.width;
@@ -57,19 +55,52 @@ function connectGame(){
   renderLoop();
 }
 
+// Animation state for walking legs
+function renderStickman(x, y, color, nickname, time){
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=4;
+  ctx.translate(x, y);
+  ctx.font='bold 15px Arial';
+  ctx.fillStyle='#fff';
+  ctx.textAlign='center';
+  ctx.fillText(nickname,0,-20);
+
+  // Body
+  ctx.beginPath(); ctx.moveTo(0,-13); ctx.lineTo(0,22); ctx.stroke();
+
+  // Animate legs
+  let legAngle = Math.sin(time/200+Math.abs(x+y)/500)*0.4;
+  ctx.save();
+  ctx.rotate(legAngle);
+  ctx.beginPath(); ctx.moveTo(0,22); ctx.lineTo(-13,42); ctx.stroke(); // left leg
+  ctx.restore();
+  ctx.save();
+  ctx.rotate(-legAngle);
+  ctx.beginPath(); ctx.moveTo(0,22); ctx.lineTo(13,42); ctx.stroke(); // right leg
+  ctx.restore();
+
+  // Animate arms swinging a little
+  let armAngle = Math.cos(time/220+Math.abs(x+y)/480)*0.3;
+  ctx.save();
+  ctx.rotate(armAngle);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-16,14); ctx.stroke(); // left arm
+  ctx.restore();
+  ctx.save();
+  ctx.rotate(-armAngle);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(16,14); ctx.stroke(); // right arm
+  ctx.restore();
+
+  // Head
+  ctx.beginPath(); ctx.arc(0,-18,10,0,2*Math.PI); ctx.stroke();
+  ctx.restore();
+}
+
 function renderLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  let t = Date.now();
   for(const pid in players){
     const p = players[pid];
-    ctx.save();
-    ctx.strokeStyle=p.color; ctx.lineWidth=4;
-    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x,p.y+35); ctx.stroke();
-    ctx.beginPath(); ctx.arc(p.x, p.y-9, 9, 0, 2*Math.PI); ctx.stroke();
-    ctx.font = 'bold 13px Arial';
-    ctx.fillStyle = '#fff';
-    ctx.textAlign='center';
-    ctx.fillText(p.nickname, p.x, p.y-16);
-    ctx.restore();
+    if(p) renderStickman(p.x, p.y, p.color||'#fff', p.nickname||'', t);
   }
   requestAnimationFrame(renderLoop);
 }
