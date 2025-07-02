@@ -3,33 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Stickman Minimal Run</title>
-  <style>
-    body { margin: 0; overflow: hidden; background: #222; }
-    #nicknameModal {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.9); z-index: 10; display: flex; align-items: center; justify-content: center;
-    }
-    #nicknameBox {
-      background: #fff; padding: 32px; border-radius: 16px; text-align: center;
-    }
-    #nicknameInput { font-size: 20px; padding: 12px; width: 230px; margin-bottom: 18px; }
-    #nicknameBtn { padding: 12px 30px; font-size: 18px; border: none; background: #1877f2; color: #fff; border-radius: 8px; cursor: pointer; }
-  </style>
+  <title>Stickman Ultra Minimal</title>
+  <style>body { margin:0; overflow:hidden; background:#222; }</style>
 </head>
 <body>
-<div id="nicknameModal">
-  <div id="nicknameBox">
-    <h2>Nickname</h2>
-    <input id="nicknameInput" maxlength="16" placeholder="Nickname...">
-    <br>
-    <button id="nicknameBtn">Vào game</button>
-  </div>
-</div>
-<canvas id="game" width="900" height="550"></canvas>
+<canvas id="game" width="800" height="500"></canvas>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script>
+// Firebase config đúng của bạn
 const firebaseConfig = {
   apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
   authDomain: "test-game-8a541.firebaseapp.com",
@@ -44,38 +26,19 @@ const db = firebase.database();
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+
 let players = {};
-let nickname = "";
-let color = "#" + Math.floor(Math.random()*16777215).toString(16);
+let localId = null;
 let x = Math.random()*canvas.width;
 let y = Math.random()*canvas.height;
-let localId = null;
+let color = '#' + Math.floor(Math.random()*16777215).toString(16);
 
-function showModal() {
-  document.getElementById('nicknameModal').style.display = 'flex';
+function promptNick(){
+  let n = prompt('Nickname?');
+  if(!n||n.length<2) return promptNick();
+  return n;
 }
-function hideModal() {
-  document.getElementById('nicknameModal').style.display = 'none';
-}
-showModal();
-
-document.getElementById('nicknameBtn').onclick = () => {
-  const val = document.getElementById('nicknameInput').value.trim();
-  if (val.length < 2) { alert('Nickname?'); return; }
-  nickname = val;
-  hideModal();
-  connectGame();
-}
-
-document.getElementById('nicknameInput').addEventListener('keyup', e => {
-  if(e.key==='Enter') document.getElementById('nicknameBtn').click();
-});
-
-canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  x = e.clientX - rect.left;
-  y = e.clientY - rect.top;
-});
+let nickname = promptNick();
 
 function connectGame(){
   const ref = db.ref('players').push();
@@ -84,33 +47,33 @@ function connectGame(){
   ref.onDisconnect().remove();
   setInterval(()=>{
     if(localId) db.ref('players/'+localId).update({x,y});
-  },60);
-  db.ref('players').on('value', snap => {
-    players = snap.val()||{};
+  },70);
+  db.ref('players').on('value', snap => { players = snap.val()||{}; });
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
   });
   renderLoop();
-}
-
-function renderStick(x, y, color, nickname){
-  ctx.save();
-  ctx.strokeStyle=color; ctx.lineWidth=4;
-  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+40); ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, y-12, 10, 0, 2*Math.PI); ctx.stroke();
-  ctx.font = 'bold 15px Arial';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign='center';
-  ctx.fillText(nickname, x, y-22);
-  ctx.restore();
 }
 
 function renderLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   for(const pid in players){
     const p = players[pid];
-    if(p) renderStick(p.x, p.y, p.color||'#fff', p.nickname||'');
+    ctx.save();
+    ctx.strokeStyle=p.color; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x,p.y+35); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y-9, 9, 0, 2*Math.PI); ctx.stroke();
+    ctx.font = 'bold 13px Arial';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign='center';
+    ctx.fillText(p.nickname, p.x, p.y-16);
+    ctx.restore();
   }
   requestAnimationFrame(renderLoop);
 }
+connectGame();
 </script>
 </body>
 </html>
