@@ -1,160 +1,293 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Game Stickman Multiplayer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multiplayer Stickman Arena</title>
   <style>
-    body, html { margin:0; padding:0; overflow:hidden; background:#222; font-family:sans-serif; }
-    #authContainer { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#333; padding:20px; border-radius:8px; color:#fff; z-index:2; }
-    #authContainer input, #authContainer button { display:block; width:220px; margin:10px auto; padding:8px; border:none; border-radius:4px; font-size:16px; }
-    #hud { position:absolute; top:10px; left:10px; color:#fff; z-index:1; }
-    #message { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:24px; z-index:1; }
-    canvas { display:block; width:100vw; height:100vh; }
+    html, body { width: 100vw; height: 100vh; margin: 0; padding: 0; background: #202020; overflow: hidden; }
+    #nicknameScreen {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.93); z-index: 999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    #nicknameScreen input {
+      font-size: 1.5rem; padding: 10px; border-radius: 8px; border: none; margin-bottom: 16px;
+    }
+    #nicknameScreen button {
+      font-size: 1.1rem; padding: 10px 30px; border-radius: 8px; background: #1ecb59; color: #fff; border: none; cursor: pointer;
+    }
+    #info { position: absolute; left: 10px; top: 10px; color: #fff; font-family: Arial; font-size: 20px; z-index: 2; text-shadow: 1px 1px 2px #000; }
+    canvas { display: block; }
   </style>
 </head>
 <body>
-  <div id="authContainer">
-    <h3>Đăng ký / Đăng nhập</h3>
-    <input id="email" type="email" placeholder="Email" />
-    <input id="pass" type="password" placeholder="Mật khẩu" />
-    <button id="btnRegister">Đăng ký</button>
-    <button id="btnLogin">Đăng nhập</button>
+  <div id="nicknameScreen">
+    <input type="text" id="nicknameInput" maxlength="15" placeholder="Nhập nickname..." autofocus />
+    <button onclick="startGame()">Vào game</button>
   </div>
-  <div id="hud" style="display:none;">HP: <span id="hp">--</span> | Kills: <span id="kills">0</span></div>
-  <div id="message">Đang kết nối...</div>
-  <canvas id="canvas"></canvas>
-
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
-    import { getDatabase, ref, set, update, onValue, runTransaction, remove } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
-
-    // Firebase config (theo bạn cung cấp)
-    const config = {
+  <div id="info">HP: 0 | Kills: 0</div>
+  <canvas id="game"></canvas>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script>
+    // Cấu hình đúng của bạn
+    const firebaseConfig = {
       apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
       authDomain: "test-game-8a541.firebaseapp.com",
-      databaseURL: "https://test-game-8a541-default-rtdb.asia-southeast1.firebasedatabase.app",
+      databaseURL: "https://test-game-8a541-default-rtdb.firebaseio.com",
       projectId: "test-game-8a541",
-      storageBucket: "test-game-8a541.firebasestorage.app",
+      storageBucket: "test-game-8a541.appspot.com",
       messagingSenderId: "396403313237",
       appId: "1:396403313237:web:3eeb142c4ffaffbd5962dc"
     };
-    const app = initializeApp(config);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    // DOM
-    const authC = document.getElementById('authContainer');
-    const emailI = document.getElementById('email');
-    const passI = document.getElementById('pass');
-    const regB = document.getElementById('btnRegister');
-    const logB = document.getElementById('btnLogin');
-    const hud = document.getElementById('hud');
-    const hpEl = document.getElementById('hp');
-    const killsEl = document.getElementById('kills');
-    const msg = document.getElementById('message');
-    const canvas = document.getElementById('canvas');
+    // Danh sách màu ngẫu nhiên cho từng stickman
+    const COLORS = ["#ffffff","#e74c3c","#2ecc71","#3498db","#f1c40f","#e67e22","#9b59b6","#00b894","#fd79a8","#0984e3"];
+    let localColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+    let nickname = "";
+    let localId = null, ref = null, local = null;
+    let others = {};
+    let kills = 0;
+    let respawnTimeout = null;
+
+    // Game UI
+    const info = document.getElementById('info');
+    const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
-    window.addEventListener('resize', resize); resize();
-
-    let uid;
-    let players = {};
-    let floats = [];
-
-    regB.onclick = () => {
-      createUserWithEmailAndPassword(auth, emailI.value, passI.value)
-        .catch(e=>alert(e.message));
-    };
-    logB.onclick = () => {
-      signInWithEmailAndPassword(auth, emailI.value, passI.value)
-        .catch(e=>alert(e.message));
-    };
-
-    onAuthStateChanged(auth, user => {
-      if(user){
-        uid = user.uid;
-        // init user kills if not exist
-        const uRef = ref(db, `users/${uid}`);
-        runTransaction(ref(db, `users/${uid}/kills`), k=> k||0);
-
-        authC.style.display = 'none';
-        hud.style.display = 'block';
-        startGame();
-      } else {
-        authC.style.display = 'flex';
-        hud.style.display = 'none';
-      }
-    });
-
-    function startGame(){
-      msg.textContent = 'Đang kết nối...';
-      // spawn
-      set(ref(db, `game/players/${uid}`), { x:canvas.width/2, y:canvas.height/2, health:100 });
-      // listen players
-      onValue(ref(db, 'game/players'), snap=>{
-        players = snap.val()||{};
-        msg.style.display = 'none';
-      });
-      // listen kills
-      onValue(ref(db, `users/${uid}/kills`), snap=>{
-        killsEl.textContent = snap.val();
-      });
-      loop();
+    // Hiện màn nickname trước khi chơi
+    function startGame() {
+      nickname = document.getElementById('nicknameInput').value.trim();
+      if (!nickname) return alert("Nhập nickname!");
+      document.getElementById('nicknameScreen').style.display = 'none';
+      spawnPlayer();
     }
 
-    window.addEventListener('mousemove', e=>{
-      if(!players[uid]||players[uid].health<=0) return;
-      update(ref(db, `game/players/${uid}`), { x:e.clientX, y:e.clientY });
+    function randomColor() {
+      return COLORS[Math.floor(Math.random() * COLORS.length)];
+    }
+
+    function spawnPlayer() {
+      localColor = randomColor();
+      localId = 'p_' + Math.random().toString(36).slice(2, 8);
+      ref = db.ref('players/' + localId);
+      local = {
+        nickname,
+        color: localColor,
+        health: 100,
+        kills: 0,
+        x: 100 + Math.random() * (canvas.width-200),
+        y: 100 + Math.random() * (canvas.height-200),
+        vx: 0, vy: 0,
+        attacking: false,
+        swing: 0,
+        dead: false,
+        respawn: null
+      };
+      ref.set(local);
+      ref.onDisconnect().remove();
+      listenPlayers();
+      renderLoop();
+    }
+
+    // Lắng nghe tất cả người chơi khác
+    function listenPlayers() {
+      db.ref('players').on('value', snap => {
+        const data = snap.val()||{};
+        others = {};
+        Object.entries(data).forEach(([id, p]) => {
+          if (id !== localId) others[id] = p;
+        });
+        // update kills
+        kills = local.kills;
+      });
+      setInterval(() => {
+        ref.update(local);
+      }, 50);
+    }
+
+    // Vẽ stickman nằm xuống nếu chết, đứng dậy nếu sống
+    let damageTexts = [];
+    function drawStickman(x, y, color, name, health, swing, weapon=false, dead=false) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      if (!dead) {
+        // Đầu
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.stroke();
+        // Thân
+        ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 70); ctx.stroke();
+        // Tay
+        ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(-20, 60); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(20, 60); ctx.stroke();
+        // Chân
+        ctx.beginPath(); ctx.moveTo(0, 70); ctx.lineTo(-18, 110); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 70); ctx.lineTo(18, 110); ctx.stroke();
+        // Vũ khí (kiếm)
+        if (weapon) {
+          ctx.save();
+          ctx.translate(20, 60);
+          ctx.rotate(swing);
+          ctx.strokeStyle = '#eee';
+          ctx.lineWidth = 7;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(35, 0); ctx.stroke();
+          ctx.restore();
+        }
+      } else {
+        // Nằm xuống
+        ctx.rotate(Math.PI/2);
+        // Đầu
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.stroke();
+        // Thân
+        ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 70); ctx.stroke();
+        // Tay
+        ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(-20, 60); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(20, 60); ctx.stroke();
+        // Chân
+        ctx.beginPath(); ctx.moveTo(0, 70); ctx.lineTo(-18, 110); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 70); ctx.lineTo(18, 110); ctx.stroke();
+        // Vũ khí (kiếm)
+        if (weapon) {
+          ctx.save();
+          ctx.translate(20, 60);
+          ctx.rotate(swing);
+          ctx.strokeStyle = '#eee';
+          ctx.lineWidth = 7;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(35, 0); ctx.stroke();
+          ctx.restore();
+        }
+      }
+      // Nickname
+      ctx.font = "18px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.fillText(name, 0, -28);
+      // Thanh máu (nếu chưa chết)
+      if (!dead) {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(-24, -36, 48, 8);
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(-24, -36, Math.max(0, health/100*48), 8);
+      }
+      ctx.restore();
+    }
+
+    function addDamageText(x, y, dmg) {
+      damageTexts.push({x,y,v:0,dmg,life:30});
+    }
+
+    function drawDamageTexts() {
+      damageTexts.forEach(dt => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, dt.life/30);
+        ctx.fillStyle = dt.dmg > 0 ? '#fff700' : '#f00';
+        ctx.font = "20px Arial";
+        ctx.fillText((dt.dmg > 0 ? '+' : '')+dt.dmg+"hp", dt.x, dt.y-dt.v);
+        ctx.restore();
+        dt.v += 1;
+        dt.life--;
+      });
+      damageTexts = damageTexts.filter(dt => dt.life > 0);
+    }
+
+    // Di chuyển theo chuột
+    let mouseX = 0, mouseY = 0;
+    canvas.addEventListener('mousemove', e => {
+      mouseX = e.clientX; mouseY = e.clientY;
     });
 
-    window.addEventListener('click', e=>{
-      Object.entries(players).forEach(([id,p])=>{
-        if(id===uid||p.health<=0) return;
-        const d = Math.hypot(e.clientX-p.x, e.clientY-p.y);
-        if(d<30){
-          const dmg = d<15?10:5;
-          update(ref(db, `game/players/${id}`), { health: Math.max(0, p.health-dmg) });
-          floats.push({ x:p.x, y:p.y-25, text:'-'+dmg+'hp', life:60 });
-          if(p.health<=dmg){
-            runTransaction(ref(db, `users/${uid}/kills`), k=> (k||0)+1);
-            setTimeout(()=> update(ref(db, `game/players/${id}`), { health: 100 }), 30000);
-          }
+    // Tấn công bằng chuột trái
+    canvas.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      if (local.health <= 0 || local.dead) return;
+      local.attacking = true;
+      local.swing = Math.PI/2;
+      // Check va chạm
+      Object.entries(others).forEach(([id, p]) => {
+        if (p.health > 0 && !p.dead && distance(local.x, local.y, p.x, p.y) < 65) {
+          let dmg = 5 + Math.floor(Math.random()*6); // 5-10 sát thương
+          // Ghi sát thương và trừ máu đối thủ
+          db.ref('players/'+id).transaction(player => {
+            if (player && player.health > 0 && !player.dead) {
+              player.health -= dmg;
+              addDamageText(p.x, p.y-38, -dmg);
+              if (player.health <= 0) {
+                player.dead = true;
+                player.respawn = Date.now()+30000; // 30s
+                db.ref('players/'+localId+'/kills').transaction(k=> (k||0)+1);
+              }
+            }
+            return player;
+          });
         }
       });
     });
+    canvas.addEventListener('mouseup', e => {
+      if (e.button !== 0) return;
+      local.attacking = false;
+    });
 
-    function loop(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      Object.entries(players).forEach(([id,p])=>{
-        // health bar
-        ctx.fillStyle='#444'; ctx.fillRect(p.x-20,p.y-40,40,6);
-        ctx.fillStyle='#0f0'; ctx.fillRect(p.x-20,p.y-40,(p.health/100)*40,6);
-        // stickman
-        ctx.strokeStyle='#fff'; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.arc(p.x,p.y-20,10,0,2*Math.PI); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x,p.y-10); ctx.lineTo(p.x,p.y+20); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x-15,p.y); ctx.lineTo(p.x+15,p.y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x,p.y+20); ctx.lineTo(p.x-10,p.y+35); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x,p.y+20); ctx.lineTo(p.x+10,p.y+35); ctx.stroke();
-      });
-      floats = floats.filter(f=>f.life>0);
-      floats.forEach(f=>{
-        ctx.globalAlpha = f.life/60;
-        ctx.fillStyle='#ff0'; ctx.font='16px sans-serif'; ctx.fillText(f.text,f.x,f.y);
-        f.y -= 0.5; f.life--;
-        ctx.globalAlpha = 1;
-      });
-      const me = players[uid]||{};
-      hp.textContent = me.health||0;
-      requestAnimationFrame(loop);
+    function updatePlayer() {
+      if (local.health > 0 && !local.dead) {
+        let dx = mouseX - local.x, dy = mouseY - local.y;
+        let dist = Math.sqrt(dx*dx+dy*dy);
+        if (dist > 2) {
+          local.x += dx/18;
+          local.y += dy/18;
+        }
+      }
+      // Tấn công: vung kiếm
+      if (local.attacking && local.swing > 0) {
+        local.swing -= 0.2;
+      } else if (!local.attacking) {
+        local.swing = 0;
+      }
+      // Xử lý respawn
+      if (local.health <= 0 && !local.dead) {
+        local.dead = true;
+        local.respawn = Date.now()+30000;
+      }
+      if (local.dead && local.respawn && Date.now() > local.respawn) {
+        // Hồi sinh
+        local.health = 100;
+        local.dead = false;
+        local.respawn = null;
+        // Spawn lại vị trí ngẫu nhiên
+        local.x = 100 + Math.random() * (canvas.width-200);
+        local.y = 100 + Math.random() * (canvas.height-200);
+      }
     }
 
-    window.addEventListener('beforeunload', ()=>{
-      if(uid) remove(ref(db, `game/players/${uid}`));
-    });
+    function distance(x1, y1, x2, y2) {
+      return Math.sqrt((x1-x2)**2 + (y1-y2)**2);
+    }
+
+    // Main render loop
+    function renderLoop() {
+      if (!local) return;
+      updatePlayer();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Vẽ tất cả các người chơi khác
+      Object.values(others).forEach(p => {
+        drawStickman(p.x, p.y, p.color||'#fff', p.nickname||'', p.health, p.swing||0, true, p.dead);
+      });
+      // Vẽ bản thân cuối cùng cho luôn trên
+      drawStickman(local.x, local.y, local.color, local.nickname, local.health, local.swing, true, local.dead);
+      drawDamageTexts();
+      // Info góc trái trên
+      info.innerText = `HP: ${local.health} | Kills: ${local.kills||0}` + (local.dead? ' | Đã chết, hồi sinh sau: '+Math.ceil((local.respawn-Date.now())/1000)+'s':'' );
+      requestAnimationFrame(renderLoop);
+    }
+
+    window.addEventListener('beforeunload', () => { if (ref) ref.remove(); });
+    window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
   </script>
 </body>
 </html>
