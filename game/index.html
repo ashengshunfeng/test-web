@@ -3,33 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Stickman Multiplayer Debug</title>
+  <title>Stickman Minimal Run</title>
   <style>
     body { margin: 0; overflow: hidden; background: #222; }
     #nicknameModal {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.85); z-index: 10; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.9); z-index: 10; display: flex; align-items: center; justify-content: center;
     }
     #nicknameBox {
       background: #fff; padding: 32px; border-radius: 16px; text-align: center;
-      box-shadow: 0 6px 36px #0007;
     }
     #nicknameInput { font-size: 20px; padding: 12px; width: 230px; margin-bottom: 18px; }
     #nicknameBtn { padding: 12px 30px; font-size: 18px; border: none; background: #1877f2; color: #fff; border-radius: 8px; cursor: pointer; }
-    #info { position: fixed; left: 12px; top: 10px; color: #fff; font-size: 22px; z-index: 2; font-family: Arial,sans-serif; }
   </style>
 </head>
 <body>
 <div id="nicknameModal">
   <div id="nicknameBox">
-    <h2>Chọn Nickname</h2>
+    <h2>Nickname</h2>
     <input id="nicknameInput" maxlength="16" placeholder="Nickname...">
     <br>
     <button id="nicknameBtn">Vào game</button>
   </div>
 </div>
-<canvas id="game" width="1500" height="700"></canvas>
-<div id="info"></div>
+<canvas id="game" width="900" height="550"></canvas>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script>
@@ -45,21 +42,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-function getRandomColor() {
-  const colors = ["#35b6ff", "#44ff55", "#ff4545", "#ffee44", "#ff55ff", "#b184fd", "#fff", "#ff8800", "#ff55a3"];
-  return colors[Math.floor(Math.random()*colors.length)];
-}
-
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const info = document.getElementById('info');
-let localId = null;
-let nickname = "";
-let color = "#fff";
 let players = {};
-let isDead = false;
-let hp = 100;
-let kills = 0;
+let nickname = "";
+let color = "#" + Math.floor(Math.random()*16777215).toString(16);
+let x = Math.random()*canvas.width;
+let y = Math.random()*canvas.height;
+let localId = null;
 
 function showModal() {
   document.getElementById('nicknameModal').style.display = 'flex';
@@ -71,9 +61,8 @@ showModal();
 
 document.getElementById('nicknameBtn').onclick = () => {
   const val = document.getElementById('nicknameInput').value.trim();
-  if (val.length < 3) { alert('Nickname > 2 ký tự'); return; }
+  if (val.length < 2) { alert('Nickname?'); return; }
   nickname = val;
-  color = getRandomColor();
   hideModal();
   connectGame();
 }
@@ -82,67 +71,43 @@ document.getElementById('nicknameInput').addEventListener('keyup', e => {
   if(e.key==='Enter') document.getElementById('nicknameBtn').click();
 });
 
-let x = Math.random()*canvas.width;
-let y = Math.random()*canvas.height;
-let mouse = {x, y};
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
-  mouse.x = e.clientX - rect.left;
-  mouse.y = e.clientY - rect.top;
+  x = e.clientX - rect.left;
+  y = e.clientY - rect.top;
 });
 
 function connectGame(){
-  const playerRef = db.ref('players').push();
-  localId = playerRef.key;
-  playerRef.set({nickname, color, x, y, health:100, dead:false, kills:0, respawn:0});
-  playerRef.onDisconnect().remove();
-
-  db.ref('players').on('value', snap => {
-    players = snap.val() || {};
-    console.log('Players data:', players); // Debug Firebase
-  });
-
+  const ref = db.ref('players').push();
+  localId = ref.key;
+  ref.set({nickname, color, x, y});
+  ref.onDisconnect().remove();
   setInterval(()=>{
-    if(localId && !isDead){
-      x += (mouse.x - x) * 0.13;
-      y += (mouse.y - y) * 0.13;
-      db.ref(`players/${localId}`).update({x, y, health:hp, kills, dead:isDead});
-    }
-  }, 80);
+    if(localId) db.ref('players/'+localId).update({x,y});
+  },60);
+  db.ref('players').on('value', snap => {
+    players = snap.val()||{};
+  });
   renderLoop();
 }
 
-function renderStickman(x, y, c, nickname, health) {
+function renderStick(x, y, color, nickname){
   ctx.save();
-  ctx.strokeStyle = c; ctx.lineWidth=4;
-  ctx.translate(x, y);
-  ctx.font='bold 19px Arial';
-  ctx.fillStyle='#fff';
+  ctx.strokeStyle=color; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+40); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y-12, 10, 0, 2*Math.PI); ctx.stroke();
+  ctx.font = 'bold 15px Arial';
+  ctx.fillStyle = '#fff';
   ctx.textAlign='center';
-  ctx.fillText(nickname,0,-65);
-  ctx.fillStyle='lime';
-  ctx.fillRect(-24,-54, Math.max(0,health/100*48),5);
-  ctx.strokeStyle='#fff'; ctx.lineWidth=1;
-  ctx.strokeRect(-24,-54,48,5);
-  // Thân
-  ctx.strokeStyle = c; ctx.lineWidth=4;
-  ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(0,10); ctx.stroke();
-  // Chân
-  ctx.beginPath(); ctx.moveTo(0,10); ctx.lineTo(-12,36); ctx.moveTo(0,10); ctx.lineTo(12,36); ctx.stroke();
-  // Tay
-  ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(-16,8); ctx.moveTo(0,-12); ctx.lineTo(16,8); ctx.stroke();
-  // Đầu
-  ctx.beginPath(); ctx.arc(0,-38,12,0,2*Math.PI); ctx.stroke();
+  ctx.fillText(nickname, x, y-22);
   ctx.restore();
 }
 
 function renderLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  info.textContent = `HP: ${hp} | Kills: ${kills}`;
   for(const pid in players){
     const p = players[pid];
-    if(!p) continue;
-    renderStickman(p.x, p.y, p.color||'#fff', p.nickname, p.health||100);
+    if(p) renderStick(p.x, p.y, p.color||'#fff', p.nickname||'');
   }
   requestAnimationFrame(renderLoop);
 }
