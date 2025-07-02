@@ -1,25 +1,31 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Game Stickman Multiplayer</title>
   <style>
-    body, html { margin:0; padding:0; overflow:hidden; background:#222; }
+    body, html { margin:0; padding:0; overflow:hidden; background:#222; font-family: sans-serif; }
     #hud { position:absolute; top:10px; left:10px; color:#fff; z-index:1; }
-    #message { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:24px; z-index:2; }
+    #overlay { position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:2; }
+    #overlay input, #overlay button { padding:10px; margin:5px; font-size:16px; }
     canvas { display:block; width:100vw; height:100vh; }
   </style>
 </head>
 <body>
   <div id="hud">HP: --</div>
   <div id="message">Đang kết nối...</div>
+  <div id="overlay">
+    <div>
+      <input id="nickInput" placeholder="Nhập nickname" />
+      <button id="nickBtn">Bắt đầu</button>
+    </div>
+  </div>
   <canvas id="gameCanvas"></canvas>
-  <!-- Firebase SDK -->
+
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    // Firebase config (KHÔNG sửa cái này)
     const firebaseConfig = {
       apiKey: "AIzaSyDCcrfHUbnpcQMCxoF1mxwUoE9wOJR2_GE",
       authDomain: "test-game-8a541.firebaseapp.com",
@@ -31,80 +37,109 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const hud = document.getElementById('hud');
     const message = document.getElementById('message');
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    const overlay = document.getElementById('overlay');
+    const nickInput = document.getElementById('nickInput');
+    const nickBtn = document.getElementById('nickBtn');
+
+    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resize); resize();
-    // id unique cho mỗi session
+
+    // Session: playerId, nickname, color
     let localId = sessionStorage.getItem('playerId');
-    if (!localId) {
-      localId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+    if(!localId){ localId = 'p_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
       sessionStorage.setItem('playerId', localId);
     }
+    let nick = sessionStorage.getItem('playerNick');
+    let color = sessionStorage.getItem('playerColor');
+    function randomColor(){
+      return 'hsl('+Math.floor(Math.random()*360)+',70%,60%)';
+    }
+    if(!color){ color = randomColor(); sessionStorage.setItem('playerColor', color); }
+
     class Player {
-      constructor(id, x, y, health) {
-        this.id = id; this.x = x; this.y = y; this.health = health; this.dead = false;
-      }
-      draw() {
-        ctx.strokeStyle = this.id === localId ? '#0f0' : '#f00';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(this.x, this.y-20, 10, 0, Math.PI*2); ctx.stroke(); // head
-        ctx.beginPath(); ctx.moveTo(this.x, this.y-10); ctx.lineTo(this.x, this.y+20); ctx.stroke(); // body
-        ctx.beginPath(); ctx.moveTo(this.x-15, this.y); ctx.lineTo(this.x+15, this.y); ctx.stroke(); // arms
-        ctx.beginPath(); ctx.moveTo(this.x, this.y+20); ctx.lineTo(this.x-10, this.y+35); ctx.stroke(); // leg left
-        ctx.beginPath(); ctx.moveTo(this.x, this.y+20); ctx.lineTo(this.x+10, this.y+35); ctx.stroke(); // leg right
+      constructor(id,x,y,h, nick, color){ this.id=id; this.x=x; this.y=y; this.health=h; this.nick=nick; this.color=color; }
+      draw(){
+        // name
+        ctx.fillStyle='#fff'; ctx.font='14px sans-serif'; ctx.textAlign='center';
+        ctx.fillText(this.nick, this.x, this.y-52);
+        // health bar
+        const barW=40, barH=6, hb=(this.health/100)*barW;
+        ctx.fillStyle='#444'; ctx.fillRect(this.x-barW/2,this.y-45,barW,barH);
+        ctx.fillStyle='#0f0'; ctx.fillRect(this.x-barW/2,this.y-45,hb,barH);
+        // stickman
+        ctx.strokeStyle=this.color; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(this.x,this.y-20,10,0,2*Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x,this.y-10); ctx.lineTo(this.x,this.y+20); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x-15,this.y); ctx.lineTo(this.x+15,this.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x,this.y+20); ctx.lineTo(this.x-10,this.y+35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x,this.y+20); ctx.lineTo(this.x+10,this.y+35); ctx.stroke();
+        // weapon
+        ctx.strokeStyle='#ccc'; ctx.lineWidth=4;
+        ctx.beginPath(); ctx.moveTo(this.x+8,this.y+2); ctx.lineTo(this.x+25,this.y-15); ctx.stroke();
       }
     }
-    let players = {};
-    function showMessage(text) { message.textContent = text; message.style.display = 'block'; }
-    function hideMessage() { message.style.display = 'none'; }
-    function spawn() {
-      const x = canvas.width/2, y = canvas.height/2;
-      db.ref(`game/players/${localId}`).set({ x, y, health: 100 });
+    class FloatText{ constructor(x,y,t,color){ this.x=x; this.y=y; this.text=t; this.color=color; this.life=60; }
+      draw(){ ctx.globalAlpha=this.life/60; ctx.fillStyle=this.color; ctx.font='16px sans-serif'; ctx.fillText(this.text,this.x,this.y); ctx.globalAlpha=1; }
+      update(){ this.y-=0.5; this.life--; }
     }
-    window.addEventListener('mousemove', e => {
-      if (!players[localId] || players[localId].dead) return;
-      db.ref(`game/players/${localId}`).update({ x: e.clientX, y: e.clientY });
+
+    let players={}, floats=[];
+    function showMessage(txt){ message.textContent=txt; message.style.display='block'; }
+    function hideMessage(){ message.style.display='none'; }
+
+    function startGame(){ nick = nickInput.value.trim(); if(!nick) return alert('Nhập nickname');
+      sessionStorage.setItem('playerNick', nick);
+      overlay.style.display='none';
+      init();
+    }
+    nickBtn.onclick = startGame;
+
+    function spawn(){ const x=canvas.width/2, y=canvas.height/2;
+      db.ref(`game/players/${localId}`).set({ x,y,health:100, nick, color });
+    }
+
+    window.addEventListener('mousemove', e=>{
+      if(!players[localId]||players[localId].health<=0) return;
+      db.ref(`game/players/${localId}`).update({ x:e.clientX, y:e.clientY });
     });
-    window.addEventListener('click', e => {
-      Object.values(players).forEach(p => {
-        if (p.id === localId || p.dead) return;
-        const d = Math.hypot(e.clientX - p.x, e.clientY - p.y);
-        if (d < 30) {
-          const dmg = d < 15 ? 10 : 5;
-          const newHp = Math.max(0, p.health - dmg);
+    window.addEventListener('click', e=>{
+      Object.values(players).forEach(p=>{
+        if(p.id===localId||p.health<=0) return;
+        const d=Math.hypot(e.clientX-p.x,e.clientY-p.y);
+        if(d<40){ let dmg=0; if(d<10)dmg=10; else if(d<20)dmg=7; else dmg=5;
+          const newHp=Math.max(0,p.health-dmg);
           db.ref(`game/players/${p.id}/health`).set(newHp);
-          if (newHp === 0) setTimeout(() => revive(p.id), 30000);
+          floats.push(new FloatText(p.x,p.y-25,'-'+dmg+'hp',p.color));
+          if(newHp===0) setTimeout(()=>revive(p.id),30000);
         }
       });
     });
-    function revive(id) {
-      db.ref(`game/players/${id}`).update({ health: 100 });
-    }
-    db.ref('game/players').on('value', snap => {
-      const data = snap.val() || {};
-      players = {};
-      Object.entries(data).forEach(([id, info]) => {
-        players[id] = new Player(id, info.x, info.y, info.health);
-        players[id].dead = info.health <= 0;
+    function revive(id){ db.ref(`game/players/${id}`).update({ health:100 }); }
+
+    function init(){
+      showMessage('Đang kết nối...'); spawn();
+      db.ref('game/players').on('value', snap=>{
+        const data=snap.val()||{}; players={};
+        Object.entries(data).forEach(([id,info])=>{
+          players[id]=new Player(id,info.x,info.y,info.health,info.nick,info.color);
+        }); hideMessage();
       });
-      hideMessage();
-    });
-    function render() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      Object.values(players).forEach(p => { if (p.health > 0) p.draw(); });
-      const me = players[localId];
-      hud.textContent = 'HP: ' + (me ? me.health : 0);
+      render();
+    }
+    function render(){ ctx.clearRect(0,0,canvas.width,canvas.height);
+      Object.values(players).forEach(p=>{ if(p.health>0) p.draw(); });
+      floats=floats.filter(f=>f.life>0);
+      floats.forEach(f=>{ f.update(); f.draw(); });
+      const me=players[localId]; hud.textContent='HP: '+(me?me.health:0);
       requestAnimationFrame(render);
     }
-    window.addEventListener('beforeunload', () => {
-      db.ref(`game/players/${localId}`).remove();
-    });
-    showMessage('Đang kết nối...');
-    spawn();
-    render();
+    // If already has nick, skip overlay
+    if(sessionStorage.getItem('playerNick')){ overlay.style.display='none'; init(); }
   </script>
 </body>
 </html>
